@@ -1,5 +1,7 @@
 # ProxyDoctor Architecture
 
+![ProxyDoctor architecture](images/architecture.png)
+
 ProxyDoctor is a Go CLI and lightweight HTTP UI for diagnosing how a target URL behaves through direct, HTTP, HTTPS, SOCKS4, and SOCKS5 connections.
 
 This document describes the implemented architecture only. Ideas and follow-up work are tracked in `NEXT_STEPS.md`.
