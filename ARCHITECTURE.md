@@ -35,6 +35,7 @@ core/
 - `dns_resolve`: resolves the target hostname through the selected connection path.
 - `tls_certificate`: checks certificate validity, issuer, SANs, public key metadata, TLS version and cipher suite for HTTPS targets.
 - `port_connectivity`: tests common TCP ports on the target host.
+- `route_trace`: runs a best-effort traceroute and annotates public hops with country information.
 
 ## Network adapters
 

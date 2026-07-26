@@ -7,6 +7,7 @@ import (
 	dnsresolve "github.com/francomano/proxydoctor/core/checks/dns_resolve"
 	portscan "github.com/francomano/proxydoctor/core/checks/port_scan"
 	publicip "github.com/francomano/proxydoctor/core/checks/public_ip"
+	routetrace "github.com/francomano/proxydoctor/core/checks/route_trace"
 	tlscert "github.com/francomano/proxydoctor/core/checks/tls_cert"
 	"github.com/francomano/proxydoctor/core/engine"
 )
@@ -18,6 +19,7 @@ func RegisterDefaults(registry *engine.CheckRegistry) error {
 		dnsresolve.NewDNSResolveCheck(),
 		tlscert.NewTLSCertCheck(),
 		portscan.NewPortScanCheck(),
+		routetrace.NewRouteTraceCheck(),
 	}
 	for _, checker := range defaults {
 		if err := registry.Register(checker); err != nil {

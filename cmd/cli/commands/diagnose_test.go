@@ -85,7 +85,7 @@ func TestParseCheckFiltersByCategory(t *testing.T) {
 		t.Fatalf("parseCheckFilters returned error: %v", err)
 	}
 
-	want := []string{"dns_resolve", "port_connectivity", "public_ip"}
+	want := []string{"dns_resolve", "port_connectivity", "public_ip", "route_trace"}
 	assertStringSlicesEqual(t, got, want)
 }
 

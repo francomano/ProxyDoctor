@@ -48,6 +48,7 @@ ProxyDoctor is a **lightweight diagnostic tool** that:
 ProxyDoctor is a CLI-first tool to:
 - Run network checks (DNS resolution, IP detection, TLS certificate validation, port connectivity)
 - Compare results between direct connections and proxy-routed connections
+- Route tracing with country flags in the GUI and country names in CLI output
 - Identify connectivity issues and proxy misconfigurations
 
 ## Project Status

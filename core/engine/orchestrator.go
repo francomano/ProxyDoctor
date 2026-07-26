@@ -233,6 +233,20 @@ func appendResultDifferences(
 		}
 	}
 
+	if directResult.ID == "route_trace" {
+		directRoute := routeCountriesFromEvidence(directResult.Evidence)
+		proxyRoute := routeCountriesFromEvidence(proxyResult.Evidence)
+		if fmt.Sprint(directRoute) != fmt.Sprint(proxyRoute) {
+			differences = append(differences, ComparisonDifference{
+				CheckID:     directResult.ID,
+				Field:       "route_countries",
+				DirectValue: directRoute,
+				ProxyValue:  proxyRoute,
+				Summary:     fmt.Sprintf("%s countries changed from %v to %v", directResult.ID, directRoute, proxyRoute),
+			})
+		}
+	}
+
 	if directResult.ExecutionTime != proxyResult.ExecutionTime {
 		differences = append(differences, ComparisonDifference{
 			CheckID:     directResult.ID,
@@ -364,4 +378,25 @@ func (o *DiagnosisOrchestrator) generateReport(
 	}
 
 	return report
+}
+
+func routeCountriesFromEvidence(evidence map[string]interface{}) []string {
+	value, ok := evidence["route_countries"]
+	if !ok {
+		return nil
+	}
+	switch typed := value.(type) {
+	case []string:
+		return typed
+	case []interface{}:
+		countries := make([]string, 0, len(typed))
+		for _, item := range typed {
+			if country, ok := item.(string); ok && country != "" {
+				countries = append(countries, country)
+			}
+		}
+		return countries
+	default:
+		return nil
+	}
 }

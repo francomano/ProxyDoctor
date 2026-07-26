@@ -457,3 +457,35 @@ func formatHTMLSummary(report *engine.DiagnosisReport) string {
 	return fmt.Sprintf("<p>Checks Executed: %d | Failed: %d | Critical: %d | Time: %s</p>\n",
 		report.ChecksExecuted, report.ChecksFailed, report.CriticalFindings, html.EscapeString(report.ExecutionTime.String()))
 }
+
+func formatRouteTraceCLI(evidence map[string]interface{}) string {
+	var b strings.Builder
+	countries := stringSliceEvidence(evidence["route_countries"])
+	if len(countries) > 0 {
+		b.WriteString(fmt.Sprintf("Route countries: %s\n", strings.Join(countries, " -> ")))
+	}
+	if hopCount, ok := evidence["hop_count"]; ok {
+		b.WriteString(fmt.Sprintf("Hop count: %v\n", hopCount))
+	}
+	if len(countries) == 0 {
+		b.WriteString("Route countries: unavailable\n")
+	}
+	return b.String()
+}
+
+func stringSliceEvidence(value interface{}) []string {
+	switch typed := value.(type) {
+	case []string:
+		return typed
+	case []interface{}:
+		out := make([]string, 0, len(typed))
+		for _, item := range typed {
+			if s, ok := item.(string); ok && s != "" {
+				out = append(out, s)
+			}
+		}
+		return out
+	default:
+		return nil
+	}
+}
