@@ -198,6 +198,11 @@ mgr.Register(&MyPlugin{}, &plugin.Context{Registry: registry})
 
 Plugin interfaces: `CheckPlugin`, `ExportPlugin`, `MiddlewarePlugin`.
 
+## Developer Guide
+
+- `docs/CODEBASE_GUIDE.md` explains where to add checks, adapter behavior, CLI features and GUI/API behavior.
+- `docs/ISSUE_STARTING_POINTS.md` maps each open roadmap issue to concrete codebase entry points.
+
 ## File Structure
 
 ```

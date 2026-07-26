@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+- Removed repository GitHub metadata files from `.github/`.
+- Added contributor-oriented codebase and issue starting-point documentation.
+- Removed stray macOS `.DS_Store` files from the repository.
+
+
 All notable changes to this project will be documented in this file.
 
 ## v0.2.1 - 2026-07-25

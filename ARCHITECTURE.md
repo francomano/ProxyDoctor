@@ -64,3 +64,12 @@ Checks return structured results with:
 - Checks classify outcomes as `passed`, `failed`, `skipped` or `error`.
 - Shared context allows checks to reuse collected evidence such as DNS results or public IP.
 - The same engine is used by CLI and server entry points.
+
+## Contributor entry points
+
+- New checks start from `core/check/types.go`, `core/checks/register.go`, and the existing packages under `core/checks/`.
+- Adapter work starts from `core/adapters/`.
+- CLI work starts from `cmd/cli/commands/diagnose.go`.
+- GUI/API work starts from `cmd/server/main.go`.
+- Roadmap issues are mapped to concrete files in `docs/ISSUE_STARTING_POINTS.md`.
+

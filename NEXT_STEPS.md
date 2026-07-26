@@ -29,3 +29,8 @@ These require explicit design of data sources, privacy trade-offs and test fixtu
 
 - `ARCHITECTURE.md` describes only implemented behavior.
 - Planned or speculative work belongs in this file.
+
+## Issue hygiene
+
+Every open issue should point to at least one concrete starting point in the codebase. Keep `docs/ISSUE_STARTING_POINTS.md` updated whenever roadmap issues are added, closed, or substantially rewritten.
+
