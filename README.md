@@ -52,6 +52,9 @@ ProxyDoctor is a CLI-first tool to:
 
 ## Project Status
 
+> This version was reviewed and bug-fixed with OpenCode using GPT 5.5 before delivery.
+
+
 **v0.2.1 (Alpha)**
 - ✅ Core engine with check registry and dependency DAG
 - ✅ CLI with diagnose and list-checks commands
@@ -237,14 +240,6 @@ The CLI and GUI accept proxy URLs in multiple formats:
 | `host:port` + type | `77.245.76.107:1080` + `--proxy-type socks5` | Requires explicit type |
 | `host` + type | `77.245.76.107` + `--proxy-type socks5` | Uses default port (1080 for SOCKS, 8080 for HTTP) |
 | With auth | `socks5://user:pass@host:port` | Credentials extracted from URL |
-
-## Review and maintenance
-
-This version was reviewed and bug-fixed with OpenCode using GPT 5.5 before delivery.
-
-## Review and maintenance
-
-This version was reviewed and bug-fixed with OpenCode using GPT 5.5 before delivery.
 
 ## Contributing
 
