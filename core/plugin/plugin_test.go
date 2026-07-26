@@ -8,12 +8,12 @@ import (
 
 // stubPlugin is a minimal plugin implementation for testing.
 type stubPlugin struct {
-	id       string
-	name     string
-	initErr  error
-	shutErr  error
-	initCalled  bool
-	shutCalled  bool
+	id         string
+	name       string
+	initErr    error
+	shutErr    error
+	initCalled bool
+	shutCalled bool
 }
 
 func (s *stubPlugin) ID() string          { return s.id }

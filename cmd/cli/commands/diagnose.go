@@ -101,7 +101,9 @@ func runDiagnose(cmd *cobra.Command, args []string) error {
 	}
 
 	registry := engine.NewCheckRegistry()
-	checkspkg.RegisterDefaults(registry)
+	if err := checkspkg.RegisterDefaults(registry); err != nil {
+		return err
+	}
 
 	checkIDs, err := parseCheckFilters(checks, registry)
 	if err != nil {

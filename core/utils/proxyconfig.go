@@ -19,6 +19,8 @@ import (
 //   - host:port           (e.g. 77.245.76.107:1080) — requires explicit --proxy-type
 //   - host                (e.g. 77.245.76.107) — requires explicit --proxy-type, uses default port
 func ParseProxyConfig(proxyStr, proxyTypeStr string) (check.ProxyConfig, error) {
+	proxyStr = strings.TrimSpace(proxyStr)
+	proxyTypeStr = strings.TrimSpace(proxyTypeStr)
 	if proxyStr == "" {
 		return check.ProxyConfig{Type: check.ProxyTypeDirect}, nil
 	}
@@ -111,7 +113,7 @@ func parseBareHost(proxyStr, proxyTypeStr string) (check.ProxyConfig, error) {
 	case "socks5", "socks":
 		proxyType = check.ProxyTypeSOCKS5
 	case "auto", "":
-		return check.ProxyConfig{}, fmt.Errorf("cannot auto-detect proxy type from %q — add a scheme (e.g. socks5://%s) or select a proxy type from the dropdown", proxyStr, proxyStr)
+		return check.ProxyConfig{}, fmt.Errorf("cannot auto-detect proxy type from %q — add a scheme (e.g. socks5://%s) or pass an explicit proxy type", proxyStr, proxyStr)
 	default:
 		return check.ProxyConfig{}, fmt.Errorf("unknown proxy type %q", proxyTypeStr)
 	}

@@ -63,7 +63,7 @@ ProxyDoctor is a CLI-first tool to:
 - ✅ `--export json` and `--export markdown` (working)
 - ✅ Unit tests (6 passing tests, engine coverage)
 - ✅ Plugin system (CheckPlugin, ExportPlugin, MiddlewarePlugin interfaces)
-- 🔲 More checks (DNS leak, WebRTC leak, geolocation, IP reputation planned)
+- 🧭 Focused backlog for optional checks such as DNS leak, WebRTC leak, geolocation and IP reputation
 - 🔲 Community plugins (MPC server, Prometheus metrics, custom reports)
 
 ## Requirements
@@ -238,6 +238,14 @@ The CLI and GUI accept proxy URLs in multiple formats:
 | `host` + type | `77.245.76.107` + `--proxy-type socks5` | Uses default port (1080 for SOCKS, 8080 for HTTP) |
 | With auth | `socks5://user:pass@host:port` | Credentials extracted from URL |
 
+## Review and maintenance
+
+This version was reviewed and bug-fixed with OpenCode using GPT 5.5 before delivery.
+
+## Review and maintenance
+
+This version was reviewed and bug-fixed with OpenCode using GPT 5.5 before delivery.
+
 ## Contributing
 
 Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) for details on how to get started.
@@ -264,4 +272,4 @@ Please read our [Code of Conduct](CODE_OF_CONDUCT.md) before contributing.
 
 ## Known Issues / Limitations
 
-- DNS leak, WebRTC leak, geolocation, and IP reputation checks are planned but not yet implemented.
+- Optional DNS leak, WebRTC leak, geolocation, and IP reputation checks are tracked as future work in NEXT_STEPS.md.

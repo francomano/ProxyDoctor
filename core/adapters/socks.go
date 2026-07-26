@@ -78,13 +78,15 @@ func (a *SOCKS4Adapter) ExecuteHTTPRequest(req *check.HTTPRequest) (*check.HTTPR
 	}
 	defer httpResp.Body.Close()
 
-	buf := make([]byte, 1024*1024)
-	n, _ := httpResp.Body.Read(buf)
+	body, err := readLimitedBody(httpResp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
 
 	return &check.HTTPResponse{
 		StatusCode: httpResp.StatusCode,
 		Headers:    httpResp.Header,
-		Body:       buf[:n],
+		Body:       body,
 		Duration:   duration,
 	}, nil
 }
@@ -208,6 +210,7 @@ func (a *SOCKS4Adapter) GetTLSCertificate(hostname string) (*check.CertificateIn
 		SANs:               cert.DNSNames,
 		SignatureAlgorithm: cert.SignatureAlgorithm.String(),
 		PublicKeyType:      fmt.Sprintf("%T", cert.PublicKey),
+		PublicKeyBits:      publicKeyBits(cert.PublicKey),
 		IsValid:            time.Now().Before(cert.NotAfter) && time.Now().After(cert.NotBefore),
 	}, nil
 }
@@ -230,7 +233,7 @@ func (a *SOCKS4Adapter) GetTLSVersion(hostname string) (string, error) {
 	defer conn.Close()
 
 	state := conn.ConnectionState()
-	return fmt.Sprintf("TLS %d.%d", state.Version>>8, state.Version&0xFF), nil
+	return formatTLSVersion(state.Version), nil
 }
 
 // --- SOCKS5 Adapter ---
@@ -322,13 +325,15 @@ func (a *SOCKS5Adapter) ExecuteHTTPRequest(req *check.HTTPRequest) (*check.HTTPR
 	}
 	defer httpResp.Body.Close()
 
-	buf := make([]byte, 1024*1024)
-	n, _ := httpResp.Body.Read(buf)
+	body, err := readLimitedBody(httpResp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
 
 	return &check.HTTPResponse{
 		StatusCode: httpResp.StatusCode,
 		Headers:    httpResp.Header,
-		Body:       buf[:n],
+		Body:       body,
 		Duration:   duration,
 	}, nil
 }
@@ -464,6 +469,7 @@ func (a *SOCKS5Adapter) GetTLSCertificate(hostname string) (*check.CertificateIn
 		SANs:               cert.DNSNames,
 		SignatureAlgorithm: cert.SignatureAlgorithm.String(),
 		PublicKeyType:      fmt.Sprintf("%T", cert.PublicKey),
+		PublicKeyBits:      publicKeyBits(cert.PublicKey),
 		IsValid:            time.Now().Before(cert.NotAfter) && time.Now().After(cert.NotBefore),
 	}, nil
 }
@@ -486,7 +492,7 @@ func (a *SOCKS5Adapter) GetTLSVersion(hostname string) (string, error) {
 	defer conn.Close()
 
 	state := conn.ConnectionState()
-	return fmt.Sprintf("TLS %d.%d", state.Version>>8, state.Version&0xFF), nil
+	return formatTLSVersion(state.Version), nil
 }
 
 // --- SOCKS4 Protocol Helpers ---

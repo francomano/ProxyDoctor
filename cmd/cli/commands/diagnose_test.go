@@ -176,7 +176,9 @@ func TestFormatComparisonOutputsNoDifferences(t *testing.T) {
 
 func newTestRegistry() *engine.CheckRegistry {
 	registry := engine.NewCheckRegistry()
-	checkspkg.RegisterDefaults(registry)
+	if err := checkspkg.RegisterDefaults(registry); err != nil {
+		panic(err)
+	}
 	return registry
 }
 

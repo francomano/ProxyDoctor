@@ -10,9 +10,7 @@ import (
 
 type DNSResolveCheck struct{}
 
-func NewDNSResolveCheck() check.Checker {
-	return &DNSResolveCheck{}
-}
+func NewDNSResolveCheck() check.Checker { return &DNSResolveCheck{} }
 
 func (c *DNSResolveCheck) ID() string   { return "dns_resolve" }
 func (c *DNSResolveCheck) Name() string { return "DNS Resolution" }
@@ -26,8 +24,7 @@ func (c *DNSResolveCheck) Execute(ctx check.ExecutionContext) check.CheckResult 
 	result := check.NewCheckResult(c.ID(), c.Category())
 	startTime := time.Now()
 
-	targetURL := ctx.GetURL()
-	parsed, err := url.Parse(targetURL)
+	parsed, err := url.Parse(ctx.GetURL())
 	if err != nil {
 		result.SetExecutionTime(time.Since(startTime))
 		return *result.WithStatus(check.StatusError, check.SeverityCritical).
@@ -36,6 +33,12 @@ func (c *DNSResolveCheck) Execute(ctx check.ExecutionContext) check.CheckResult 
 	}
 
 	hostname := parsed.Hostname()
+	if hostname == "" {
+		result.SetExecutionTime(time.Since(startTime))
+		return *result.WithStatus(check.StatusError, check.SeverityCritical).
+			WithExplanation("Invalid URL: missing hostname").
+			WithConfidence(0)
+	}
 
 	adapter := ctx.GetProxyAdapter()
 	if ctx.GetProxyConfig().Type == check.ProxyTypeDirect {
@@ -49,7 +52,6 @@ func (c *DNSResolveCheck) Execute(ctx check.ExecutionContext) check.CheckResult 
 			WithExplanation(fmt.Sprintf("DNS resolution failed for %s: %v", hostname, err)).
 			WithConfidence(0)
 	}
-
 	if len(ips) == 0 {
 		result.SetExecutionTime(time.Since(startTime))
 		return *result.WithStatus(check.StatusFailed, check.SeverityCritical).

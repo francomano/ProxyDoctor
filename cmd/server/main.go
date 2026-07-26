@@ -17,7 +17,9 @@ import (
 // they land in core/checks/.
 func newRegistry() *engine.CheckRegistry {
 	registry := engine.NewCheckRegistry()
-	checkspkg.RegisterDefaults(registry)
+	if err := checkspkg.RegisterDefaults(registry); err != nil {
+		log.Fatalf("failed to register checks: %v", err)
+	}
 	return registry
 }
 

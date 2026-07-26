@@ -10,9 +10,7 @@ import (
 
 type TLSCertCheck struct{}
 
-func NewTLSCertCheck() check.Checker {
-	return &TLSCertCheck{}
-}
+func NewTLSCertCheck() check.Checker { return &TLSCertCheck{} }
 
 func (c *TLSCertCheck) ID() string   { return "tls_certificate" }
 func (c *TLSCertCheck) Name() string { return "TLS Certificate" }
@@ -34,15 +32,6 @@ func (c *TLSCertCheck) Execute(ctx check.ExecutionContext) check.CheckResult {
 			WithExplanation(fmt.Sprintf("Invalid URL: %v", err)).
 			WithConfidence(0)
 	}
-
-	hostname := parsed.Hostname()
-
-	adapter := ctx.GetProxyAdapter()
-	if ctx.GetProxyConfig().Type == check.ProxyTypeDirect {
-		adapter = ctx.GetDirectAdapter()
-	}
-
-	// Only check TLS for HTTPS URLs
 	if parsed.Scheme != "https" {
 		result.SetExecutionTime(time.Since(startTime))
 		return *result.WithStatus(check.StatusSkipped, check.SeverityInfo).
@@ -50,49 +39,70 @@ func (c *TLSCertCheck) Execute(ctx check.ExecutionContext) check.CheckResult {
 			WithConfidence(0)
 	}
 
+	hostname := parsed.Hostname()
+	if hostname == "" {
+		result.SetExecutionTime(time.Since(startTime))
+		return *result.WithStatus(check.StatusError, check.SeverityCritical).
+			WithExplanation("Invalid URL: missing hostname").
+			WithConfidence(0)
+	}
+
+	adapter := ctx.GetProxyAdapter()
+	if ctx.GetProxyConfig().Type == check.ProxyTypeDirect {
+		adapter = ctx.GetDirectAdapter()
+	}
+
 	certInfo, err := adapter.GetTLSCertificate(hostname)
 	if err != nil {
 		result.SetExecutionTime(time.Since(startTime))
-		return *result.WithStatus(check.StatusError, check.SeverityWarning).
+		return *result.WithStatus(check.StatusError, check.SeverityCritical).
 			WithExplanation(fmt.Sprintf("TLS certificate check failed for %s: %v", hostname, err)).
 			WithConfidence(0).
-			AddProbableCause("Target may not support TLS").
-			AddProbableCause("Proxy may be blocking TLS connections")
+			AddProbableCause("TLS handshake failed").
+			AddSuggestedAction("Verify that the target supports HTTPS and the proxy allows TLS traffic")
 	}
 
-	cipherSuite, _ := adapter.GetTLSCipherSuite(hostname)
-	tlsVersion, _ := adapter.GetTLSVersion(hostname)
-
-	ctx.SetSharedData("tls_cert", certInfo)
-	ctx.SetSharedData("tls_cipher", cipherSuite)
-	ctx.SetSharedData("tls_version", tlsVersion)
-
-	if !certInfo.IsValid {
-		result.SetExecutionTime(time.Since(startTime))
-		return *result.WithStatus(check.StatusFailed, check.SeverityCritical).
-			WithExplanation(fmt.Sprintf("TLS certificate for %s is invalid — not valid or expired", hostname)).
-			WithConfidence(0.95).
-			AddEvidence("subject", certInfo.Subject).
-			AddEvidence("issuer", certInfo.Issuer).
-			AddEvidence("not_before", certInfo.NotBefore).
-			AddEvidence("not_after", certInfo.NotAfter).
-			AddEvidence("is_valid", certInfo.IsValid).
-			AddEvidence("cipher_suite", cipherSuite).
-			AddEvidence("tls_version", tlsVersion).
-			AddSuggestedAction("Check if the certificate has been revoked or if the system clock is correct")
-	}
+	cipherSuite, cipherErr := adapter.GetTLSCipherSuite(hostname)
+	tlsVersion, versionErr := adapter.GetTLSVersion(hostname)
 
 	result.SetExecutionTime(time.Since(startTime))
-	return *result.WithStatus(check.StatusPassed, check.SeverityInfo).
-		WithExplanation(fmt.Sprintf("TLS certificate for %s is valid (issuer: %s, expires: %s)", hostname, certInfo.Issuer, certInfo.NotAfter.Format("2006-01-02"))).
-		WithConfidence(0.95).
+	result.AddEvidence("hostname", hostname).
 		AddEvidence("subject", certInfo.Subject).
 		AddEvidence("issuer", certInfo.Issuer).
 		AddEvidence("not_before", certInfo.NotBefore).
 		AddEvidence("not_after", certInfo.NotAfter).
-		AddEvidence("is_valid", certInfo.IsValid).
-		AddEvidence("signature_algorithm", certInfo.SignatureAlgorithm).
 		AddEvidence("sans", certInfo.SANs).
-		AddEvidence("cipher_suite", cipherSuite).
-		AddEvidence("tls_version", tlsVersion)
+		AddEvidence("signature_algorithm", certInfo.SignatureAlgorithm).
+		AddEvidence("public_key_type", certInfo.PublicKeyType).
+		AddEvidence("public_key_bits", certInfo.PublicKeyBits).
+		AddEvidence("is_valid", certInfo.IsValid)
+	if cipherErr == nil {
+		result.AddEvidence("cipher_suite", cipherSuite)
+	} else {
+		result.AddEvidence("cipher_suite_error", cipherErr.Error())
+	}
+	if versionErr == nil {
+		result.AddEvidence("tls_version", tlsVersion)
+	} else {
+		result.AddEvidence("tls_version_error", versionErr.Error())
+	}
+
+	now := time.Now()
+	if !certInfo.IsValid {
+		return *result.WithStatus(check.StatusFailed, check.SeverityCritical).
+			WithExplanation(fmt.Sprintf("TLS certificate for %s is not currently valid", hostname)).
+			WithConfidence(0.95).
+			AddProbableCause("Certificate is expired or not yet valid").
+			AddSuggestedAction("Renew or replace the certificate")
+	}
+	if certInfo.NotAfter.Before(now.Add(30 * 24 * time.Hour)) {
+		return *result.WithStatus(check.StatusFailed, check.SeverityWarning).
+			WithExplanation(fmt.Sprintf("TLS certificate for %s expires soon: %s", hostname, certInfo.NotAfter.Format(time.RFC3339))).
+			WithConfidence(0.9).
+			AddSuggestedAction("Schedule certificate renewal before expiration")
+	}
+
+	return *result.WithStatus(check.StatusPassed, check.SeverityInfo).
+		WithExplanation(fmt.Sprintf("TLS certificate for %s is valid until %s", hostname, certInfo.NotAfter.Format(time.RFC3339))).
+		WithConfidence(0.95)
 }

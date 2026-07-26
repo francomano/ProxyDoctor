@@ -102,7 +102,6 @@ const (
 	ProxyTypeHTTPS  ProxyType = "https"
 	ProxyTypeSOCKS4 ProxyType = "socks4"
 	ProxyTypeSOCKS5 ProxyType = "socks5"
-	ProxyTypeVPN    ProxyType = "vpn"
 )
 
 // NetworkAdapter abstracts different network connection types

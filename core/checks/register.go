@@ -1,6 +1,9 @@
 package checks
 
 import (
+	"fmt"
+
+	"github.com/francomano/proxydoctor/core/check"
 	dnsresolve "github.com/francomano/proxydoctor/core/checks/dns_resolve"
 	portscan "github.com/francomano/proxydoctor/core/checks/port_scan"
 	publicip "github.com/francomano/proxydoctor/core/checks/public_ip"
@@ -9,9 +12,17 @@ import (
 )
 
 // RegisterDefaults registers all built-in diagnostic checks into the provided registry.
-func RegisterDefaults(registry *engine.CheckRegistry) {
-	registry.Register(publicip.NewPublicIPCheck())
-	registry.Register(dnsresolve.NewDNSResolveCheck())
-	registry.Register(tlscert.NewTLSCertCheck())
-	registry.Register(portscan.NewPortScanCheck())
+func RegisterDefaults(registry *engine.CheckRegistry) error {
+	defaults := []check.Checker{
+		publicip.NewPublicIPCheck(),
+		dnsresolve.NewDNSResolveCheck(),
+		tlscert.NewTLSCertCheck(),
+		portscan.NewPortScanCheck(),
+	}
+	for _, checker := range defaults {
+		if err := registry.Register(checker); err != nil {
+			return fmt.Errorf("register %s: %w", checker.ID(), err)
+		}
+	}
+	return nil
 }
