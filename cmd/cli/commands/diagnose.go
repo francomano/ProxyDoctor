@@ -45,15 +45,11 @@ It analyzes connectivity through proxies and identifies issues.`,
 			return
 		}
 		fmt.Println()
-		fmt.Println("  ██▓███ ▓██   ██▓ ██░ ██  ▄▄▄       ▄████▄   ██ ▄█▀ ▒█████   ███▄ ▄███▓")
-		fmt.Println(" ▓██░  ██▒▒██  ██▒▓██░ ██▒▒████▄    ▒██▀ ▀█   ██▄█▒ ▒██▒  ██▒▓██▒▀█▀ ██▒")
-		fmt.Println(" ▓██░ ██▓▒ ▒██ ██░▒██▀▀██░▒██  ▀█▄  ▒▓█    ▄ ▓███▄░ ▒██░  ██▒▓██    ▓██░")
-		fmt.Println(" ▒██▄█▓▒ ▒ ░▓█▄██║░▓█ ░██ ░██▄▄▄▄██ ▒▓▓▄ ▄██▒▓██ █▄ ▒██   ██░▒██    ▒██ ")
-		fmt.Println(" ▒██▒ ░  ░ ░▒█████▓░▓█▒░██▓ ▓█   ▓██▒▒ ▓███▀ ░▒██▒ █▄░ ████▓▒░▒██▒   ░██▒")
-		fmt.Println(" ▒▓▒░ ░  ░ ▒▒▓  ▒ ░▒ ░░▒░▒ ▒▒   ▓▒█░░ ░▒ ▒  ░▒ ▒▒ ▓▒░ ▒░▒░▒░ ░ ▒░   ░  ░")
-		fmt.Println()
+		fmt.Println("  ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓")
+		fmt.Println("  ┃  🩺 ProxyDoctor                                      ┃")
+		fmt.Println("  ┃  Comprehensive proxy diagnostics tool                ┃")
+		fmt.Println("  ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛")
 		fmt.Println("  by Marco Francomano — github.com/francomano/ProxyDoctor")
-		fmt.Println("  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 		fmt.Println()
 	},
 }
@@ -85,7 +81,7 @@ func init() {
 }
 
 func runDiagnose(cmd *cobra.Command, args []string) error {
-	fmt.Printf("🔍 ProxyDoctor v0.1 - Proxy Diagnostics Tool\n")
+	fmt.Printf("🔍 ProxyDoctor v0.2.1 - Proxy Diagnostics Tool\n")
 	fmt.Printf("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n")
 
 	diagnosisTimeout, err := parseDiagnosisTimeout(timeout)
