@@ -174,6 +174,60 @@ func TestFormatComparisonOutputsNoDifferences(t *testing.T) {
 	}
 }
 
+func TestFormatHTMLIncludesSummaryAndEvidence(t *testing.T) {
+	report := &engine.DiagnosisReport{
+		RequestMetadata: engine.RequestMetadata{
+			URL: "https://example.com",
+		},
+		ChecksExecuted:   2,
+		ChecksFailed:     1,
+		CriticalFindings: 1,
+		WarningFindings:  0,
+		ExecutionTime:    2 * time.Second,
+		Results: []check.CheckResult{
+			{
+				ID:          "public_ip",
+				Status:      check.StatusPassed,
+				Severity:    check.SeverityInfo,
+				Confidence:  0.95,
+				Explanation: "Public IP resolved via proxy.",
+				Evidence: map[string]interface{}{
+					"ip": "203.0.113.10",
+				},
+			},
+			{
+				ID:               "dns_leak",
+				Status:           check.StatusFailed,
+				Severity:         check.SeverityCritical,
+				Confidence:       0.8,
+				Explanation:      "DNS requests bypassed the proxy.",
+				ProbableCauses:   []string{"System resolver used instead of proxy"},
+				SuggestedActions: []string{"Configure DNS over the proxy"},
+			},
+		},
+	}
+
+	out := formatHTML(report)
+
+	mustContain := []string{
+		"<!doctype html>",
+		"ProxyDoctor Diagnosis Report",
+		"example.com",
+		"Checks Executed",
+		"public_ip",
+		"dns_leak",
+		"<details class=\"evidence\">",
+		"203.0.113.10",
+		"Probable causes",
+		"Suggested actions",
+	}
+	for _, want := range mustContain {
+		if !strings.Contains(out, want) {
+			t.Fatalf("html output missing %q:\n%s", want, out)
+		}
+	}
+}
+
 func newTestRegistry() *engine.CheckRegistry {
 	registry := engine.NewCheckRegistry()
 	if err := checkspkg.RegisterDefaults(registry); err != nil {

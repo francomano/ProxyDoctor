@@ -326,25 +326,252 @@ func formatComparisonJSON(report *engine.ComparisonReport) string {
 	return string(b) + "\n"
 }
 
+const htmlReportStyle = `
+  :root {
+    color-scheme: light dark;
+    --bg: #f4f6f8;
+    --card-bg: #ffffff;
+    --text: #1a1f27;
+    --muted: #5b6673;
+    --border: #e2e6ea;
+    --pass: #1e8e5a;
+    --fail: #d64545;
+    --error: #c9820a;
+    --critical: #d64545;
+    --warning: #c9820a;
+    --info: #3b6fd6;
+    --accent: #2b5fa8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 32px 16px;
+    line-height: 1.5;
+  }
+  .container { max-width: 880px; margin: 0 auto; }
+  header.report-header {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px 28px;
+    margin-bottom: 20px;
+  }
+  header.report-header h1 { margin: 0 0 6px; font-size: 1.6em; }
+  header.report-header .meta { color: var(--muted); font-size: 0.92em; }
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 12px;
+    margin-top: 18px;
+  }
+  .summary-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    text-align: center;
+  }
+  .summary-card .value { font-size: 1.5em; font-weight: 700; }
+  .summary-card .label { color: var(--muted); font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.03em; }
+  .summary-card.critical .value { color: var(--critical); }
+  .summary-card.failed .value { color: var(--fail); }
+  .results { display: flex; flex-direction: column; gap: 12px; }
+  .result-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-left: 5px solid var(--muted);
+    border-radius: 8px;
+    padding: 16px 20px;
+  }
+  .result-card.status-passed { border-left-color: var(--pass); }
+  .result-card.status-failed { border-left-color: var(--fail); }
+  .result-card.status-error { border-left-color: var(--error); }
+  .result-card.status-skipped { border-left-color: var(--border); }
+  .result-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .result-title h3 { margin: 0; font-size: 1.05em; }
+  .badges { display: flex; gap: 6px; flex-wrap: wrap; }
+  .badge {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 999px;
+    font-size: 0.75em;
+    font-weight: 600;
+    color: #fff;
+    background: var(--muted);
+    white-space: nowrap;
+  }
+  .badge.status-passed { background: var(--pass); }
+  .badge.status-failed { background: var(--fail); }
+  .badge.status-error { background: var(--error); }
+  .badge.status-skipped { background: var(--muted); }
+  .badge.severity-critical { background: var(--critical); }
+  .badge.severity-warning { background: var(--warning); }
+  .badge.severity-info { background: var(--info); }
+  .badge.confidence { background: var(--accent); }
+  .explanation { margin: 10px 0 0; color: var(--text); }
+  details.evidence { margin-top: 10px; }
+  details.evidence summary {
+    cursor: pointer;
+    color: var(--accent);
+    font-size: 0.88em;
+    font-weight: 600;
+  }
+  details.evidence table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+    font-size: 0.85em;
+  }
+  details.evidence td {
+    border-top: 1px solid var(--border);
+    padding: 6px 8px;
+    vertical-align: top;
+  }
+  details.evidence td.evidence-key {
+    color: var(--muted);
+    white-space: nowrap;
+    width: 1%;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  ul.list-plain { margin: 8px 0 0; padding-left: 20px; }
+  footer.report-footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.82em;
+    margin-top: 24px;
+  }
+`
+
 func formatHTML(report *engine.DiagnosisReport) string {
-	var out string
-	out += "<!doctype html>\n<html><head><meta charset=\"utf-8\"><title>ProxyDoctor Diagnosis Report</title></head><body>\n"
-	out += "<h1>ProxyDoctor Diagnosis Report</h1>\n"
-	out += "<ol>\n"
-	for _, result := range report.Results {
-		out += fmt.Sprintf("<li><strong>%s</strong><br>Status: %s<br>Severity: %s<br>Confidence: %.0f%%<p>%s</p></li>\n",
-			html.EscapeString(result.ID),
-			html.EscapeString(string(result.Status)),
-			html.EscapeString(string(result.Severity)),
-			result.Confidence*100,
-			html.EscapeString(result.Explanation))
+	var out strings.Builder
+	out.WriteString("<!doctype html>\n<html lang=\"en\"><head>\n")
+	out.WriteString("<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n")
+	out.WriteString("<title>ProxyDoctor Diagnosis Report</title>\n")
+	out.WriteString("<style>" + htmlReportStyle + "</style>\n</head><body>\n")
+	out.WriteString("<div class=\"container\">\n")
+
+	out.WriteString("<header class=\"report-header\">\n")
+	out.WriteString("<h1>🩺 ProxyDoctor Diagnosis Report</h1>\n")
+	targetURL := report.RequestMetadata.URL
+	generatedAt := report.RequestMetadata.CompletedAt
+	if generatedAt.IsZero() {
+		generatedAt = time.Now()
 	}
-	out += "</ol>\n"
-	out += fmt.Sprintf("<p>Checks Executed: %d | Failed: %d | Critical: %d</p>\n",
-		report.ChecksExecuted, report.ChecksFailed, report.CriticalFindings)
-	out += fmt.Sprintf("<p>Total Time: %s</p>\n", html.EscapeString(report.ExecutionTime.String()))
-	out += "</body></html>\n"
-	return out
+	out.WriteString("<div class=\"meta\">\n")
+	if targetURL != "" {
+		out.WriteString(fmt.Sprintf("Target: <strong>%s</strong><br>\n", html.EscapeString(targetURL)))
+	}
+	out.WriteString(fmt.Sprintf("Generated: %s\n", html.EscapeString(generatedAt.Format("2006-01-02 15:04:05 MST"))))
+	out.WriteString("</div>\n")
+
+	out.WriteString("<div class=\"summary-grid\">\n")
+	out.WriteString(summaryCard("Checks Executed", fmt.Sprintf("%d", report.ChecksExecuted), ""))
+	out.WriteString(summaryCard("Failed", fmt.Sprintf("%d", report.ChecksFailed), "failed"))
+	out.WriteString(summaryCard("Critical", fmt.Sprintf("%d", report.CriticalFindings), "critical"))
+	out.WriteString(summaryCard("Warnings", fmt.Sprintf("%d", report.WarningFindings), ""))
+	out.WriteString(summaryCard("Total Time", report.ExecutionTime.String(), ""))
+	out.WriteString("</div>\n")
+	out.WriteString("</header>\n")
+
+	out.WriteString("<section class=\"results\">\n")
+	for _, result := range report.Results {
+		out.WriteString(formatHTMLResultCard(result))
+	}
+	out.WriteString("</section>\n")
+
+	out.WriteString("<footer class=\"report-footer\">Generated by ProxyDoctor &mdash; github.com/francomano/ProxyDoctor</footer>\n")
+	out.WriteString("</div>\n</body></html>\n")
+	return out.String()
+}
+
+func summaryCard(label, value, extraClass string) string {
+	class := "summary-card"
+	if extraClass != "" {
+		class += " " + extraClass
+	}
+	return fmt.Sprintf("<div class=\"%s\"><div class=\"value\">%s</div><div class=\"label\">%s</div></div>\n",
+		class, html.EscapeString(value), html.EscapeString(label))
+}
+
+func formatHTMLResultCard(result check.CheckResult) string {
+	statusClass := "status-" + strings.ToLower(string(result.Status))
+	severityClass := "severity-" + strings.ToLower(string(result.Severity))
+
+	var out strings.Builder
+	out.WriteString(fmt.Sprintf("<article class=\"result-card %s\">\n", statusClass))
+	out.WriteString("<div class=\"result-title\">\n")
+	out.WriteString(fmt.Sprintf("<h3>%s</h3>\n", html.EscapeString(result.ID)))
+	out.WriteString("<div class=\"badges\">\n")
+	out.WriteString(fmt.Sprintf("<span class=\"badge %s\">%s</span>\n", statusClass, html.EscapeString(string(result.Status))))
+	out.WriteString(fmt.Sprintf("<span class=\"badge %s\">%s</span>\n", severityClass, html.EscapeString(string(result.Severity))))
+	out.WriteString(fmt.Sprintf("<span class=\"badge confidence\">%.0f%% confidence</span>\n", result.Confidence*100))
+	out.WriteString("</div>\n</div>\n")
+
+	if result.Explanation != "" {
+		out.WriteString(fmt.Sprintf("<p class=\"explanation\">%s</p>\n", html.EscapeString(result.Explanation)))
+	}
+
+	if len(result.ProbableCauses) > 0 {
+		out.WriteString("<div><strong>Probable causes</strong>" + htmlList(result.ProbableCauses) + "</div>\n")
+	}
+	if len(result.SuggestedActions) > 0 {
+		out.WriteString("<div><strong>Suggested actions</strong>" + htmlList(result.SuggestedActions) + "</div>\n")
+	}
+
+	if len(result.Evidence) > 0 {
+		out.WriteString("<details class=\"evidence\"><summary>Evidence</summary>\n<table>\n")
+		keys := make([]string, 0, len(result.Evidence))
+		for k := range result.Evidence {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			out.WriteString(fmt.Sprintf("<tr><td class=\"evidence-key\">%s</td><td>%s</td></tr>\n",
+				html.EscapeString(k), html.EscapeString(formatEvidenceValue(result.Evidence[k]))))
+		}
+		out.WriteString("</table>\n</details>\n")
+	}
+
+	out.WriteString("</article>\n")
+	return out.String()
+}
+
+func htmlList(items []string) string {
+	var out strings.Builder
+	out.WriteString("<ul class=\"list-plain\">\n")
+	for _, item := range items {
+		out.WriteString(fmt.Sprintf("<li>%s</li>\n", html.EscapeString(item)))
+	}
+	out.WriteString("</ul>\n")
+	return out.String()
+}
+
+func formatEvidenceValue(value interface{}) string {
+	switch typed := value.(type) {
+	case string:
+		return typed
+	case []string:
+		return strings.Join(typed, ", ")
+	case []interface{}:
+		parts := make([]string, 0, len(typed))
+		for _, item := range typed {
+			parts = append(parts, fmt.Sprint(item))
+		}
+		return strings.Join(parts, ", ")
+	case nil:
+		return ""
+	default:
+		return fmt.Sprint(typed)
+	}
 }
 
 func formatMarkdown(report *engine.DiagnosisReport) string {
