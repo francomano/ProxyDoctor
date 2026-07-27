@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Added
+- `ipv6_leak` check (`core/checks/ipv6_leak/check.go`): detects whether the system and target support IPv6, discovers the system's real public IPv6 address by probing directly (bypassing any configured proxy/tunnel), tests whether the configured proxy forwards IPv6 destinations, and reports whether IPv6 traffic would bypass the proxy/tunnel and leak the system's real address. Registered in `core/checks/register.go`.
+
 ### Changed
 - Removed repository GitHub metadata files from `.github/`.
 - Added contributor-oriented codebase and issue starting-point documentation.

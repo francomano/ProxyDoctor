@@ -36,6 +36,7 @@ core/
 - `tls_certificate`: checks certificate validity, issuer, SANs, public key metadata, TLS version and cipher suite for HTTPS targets.
 - `port_connectivity`: tests common TCP ports on the target host.
 - `route_trace`: runs a best-effort traceroute and annotates public hops with country information.
+- `ipv6_leak`: checks whether the system and target support IPv6, compares the system's direct public IPv6 address against the proxy's IPv6 forwarding capability, and reports whether IPv6 traffic can bypass the configured proxy/tunnel.
 
 ## Network adapters
 

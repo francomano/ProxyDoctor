@@ -63,7 +63,7 @@ ProxyDoctor is a CLI-first tool to:
 - ✅ SOCKS4/SOCKS5 proxy support (full protocol implementation, SOCKS4a domain support, SOCKS5 auth per RFC 1929)
 - ✅ HTTP server wired to the core engine, with a web GUI at `/` and `/api/checks`, `/api/diagnose` JSON endpoints
 - ✅ Web GUI — single-page form at `http://localhost:8080/`, runs a real diagnosis via `POST /api/diagnose` and renders results
-- ✅ 4 built-in checks: public_ip, dns_resolve, tls_certificate, port_connectivity
+- ✅ 6 built-in checks: public_ip, dns_resolve, tls_certificate, port_connectivity, route_trace, ipv6_leak
 - ✅ `--export json` and `--export markdown` (working)
 - ✅ Unit tests (6 passing tests, engine coverage)
 - ✅ Plugin system (CheckPlugin, ExportPlugin, MiddlewarePlugin interfaces)
@@ -235,6 +235,8 @@ ProxyDoctor/
 | `dns_resolve` | network | Resolves hostname to IP addresses through the current connection |
 | `tls_certificate` | tls | Validates TLS certificate (issuer, expiry, cipher suite, TLS version) |
 | `port_connectivity` | network | Tests TCP connectivity to ports 80, 443, 8080, 8443 |
+| `route_trace` | network | Traces network hops to the target and annotates public hops with country information |
+| `ipv6_leak` | leak | Detects whether IPv6 traffic bypasses the configured proxy/tunnel and exposes the system's real public IPv6 address |
 
 ## Proxy Input Formats
 
