@@ -17,10 +17,9 @@
   <img src="images/proxydoctor-demo.gif" alt="ProxyDoctor CLI Demo" width="750">
 </p>
 
-> **Built with AI assistance** — This project was developed and documented with contributions from:
-> - **GitHub Copilot** (Auto Mode, inline suggestions)
-> - **OpenCode** with free open-source models (big-pickle / opencode models)
-> - **Google Gemini Pro** (architecture design, code review)
+> **Built with AI assistance** — This project was developed with contributions from:
+> - **GitHub Copilot** and **OpenCode** (code development and implementation)
+> - **GPT 5.5** and **Gemini Pro** (architecture review, especially pull request code review)
 
 ## Why ProxyDoctor?
 
@@ -291,15 +290,12 @@ Please read our [Code of Conduct](CODE_OF_CONDUCT.md) before contributing.
 ## Project Activity
 
 <p align="center">
-  <img src="images/forks-prs-timeline.svg" alt="Forks & Pull Requests Timeline" width="700">
-</p>
-
-<p align="center">
-  <img src="https://img.shields.io/github/stars/francomano/ProxyDoctor?style=flat-square&color=yellow&label=Stars" alt="Stars">
-  <img src="https://img.shields.io/github/forks/francomano/ProxyDoctor?style=flat-square&color=green&label=Forks" alt="Forks">
-  <img src="https://img.shields.io/github/issues/francomano/ProxyDoctor?style=flat-square&color=red&label=Issues" alt="Issues">
-  <img src="https://img.shields.io/github/pulls/francomano/ProxyDoctor?style=flat-square&color=purple&label=PRs" alt="Pull Requests">
-  <img src="https://img.shields.io/github/last-commit/francomano/ProxyDoctor?style=flat-square&color=blue" alt="Last Commit">
+  <a href="https://github.com/francomano/ProxyDoctor/stargazers"><img src="https://img.shields.io/github/stars/francomano/ProxyDoctor?style=for-the-badge&color=yellow&label=Stars" alt="Stars"></a>
+  <a href="https://github.com/francomano/ProxyDoctor/network/members"><img src="https://img.shields.io/github/forks/francomano/ProxyDoctor?style=for-the-badge&color=green&label=Forks" alt="Forks"></a>
+  <a href="https://github.com/francomano/ProxyDoctor/issues"><img src="https://img.shields.io/github/issues/francomano/ProxyDoctor?style=for-the-badge&color=red&label=Issues" alt="Issues"></a>
+  <a href="https://github.com/francomano/ProxyDoctor/pulls"><img src="https://img.shields.io/github/pulls/francomano/ProxyDoctor?style=for-the-badge&color=purple&label=PRs" alt="Pull Requests"></a>
+  <a href="https://github.com/francomano/ProxyDoctor/commits"><img src="https://img.shields.io/github/last-commit/francomano/ProxyDoctor?style=for-the-badge&color=blue" alt="Last Commit"></a>
+  <a href="https://github.com/francomano/ProxyDoctor"><img src="https://img.shields.io/github/license/francomano/ProxyDoctor?style=for-the-badge&color=orange" alt="License"></a>
 </p>
 
 ## Known Issues / Limitations
