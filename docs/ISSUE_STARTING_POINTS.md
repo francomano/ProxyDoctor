@@ -8,6 +8,8 @@ Most diagnosis features should start from these files:
 
 - `core/check/types.go` — `Checker`, `CheckResult`, `ExecutionContext`, `NetworkAdapter` contracts.
 - `core/checks/register.go` — built-in check registration.
+- `core/plugin/plugin.go` — plugin interfaces (`CheckPlugin`, `ExportPlugin`, `MiddlewarePlugin`).
+- `core/plugins/registry.go` — plugin catalog and loading.
 - `core/engine/orchestrator.go` — direct/proxy execution and comparison flow.
 - `cmd/cli/commands/diagnose.go` — CLI flags, filtering and text/JSON/Markdown output.
 - `cmd/server/main.go` — web GUI and JSON API.
@@ -39,4 +41,4 @@ Most diagnosis features should start from these files:
 
 ## Rule of thumb
 
-A new diagnostic capability should normally be implemented as a `core/checks/<feature>/` package, registered in `core/checks/register.go`, exposed through the existing CLI/server flow, and covered by package-level tests.
+A new diagnostic capability should normally be implemented as a `core/checks/<feature>/` package (for built-in checks) or a `core/plugins/<feature>/` package (for plugin checks), registered appropriately, exposed through the existing CLI/server flow, and covered by package-level tests.

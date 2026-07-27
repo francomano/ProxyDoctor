@@ -9,6 +9,8 @@ import (
 	"github.com/francomano/proxydoctor/core/check"
 	checkspkg "github.com/francomano/proxydoctor/core/checks"
 	"github.com/francomano/proxydoctor/core/engine"
+	"github.com/francomano/proxydoctor/core/plugin"
+	"github.com/francomano/proxydoctor/core/plugins"
 )
 
 func TestParseDiagnosisTimeout(t *testing.T) {
@@ -85,7 +87,7 @@ func TestParseCheckFiltersByCategory(t *testing.T) {
 		t.Fatalf("parseCheckFilters returned error: %v", err)
 	}
 
-	want := []string{"dns_resolve", "port_connectivity", "public_ip", "route_trace"}
+	want := []string{"dns_resolve", "port_connectivity", "public_ip"}
 	assertStringSlicesEqual(t, got, want)
 }
 
@@ -249,4 +251,94 @@ func assertStringSlicesEqual(t *testing.T, got []string, want []string) {
 			t.Fatalf("got %v, want %v", got, want)
 		}
 	}
+}
+
+func TestDefaultRegistryDoesNotContainRouteTrace(t *testing.T) {
+	registry := newTestRegistry()
+	if _, ok := registry.GetCheck("route_trace"); ok {
+		t.Fatal("route_trace should not be in the default registry (it is now a plugin)")
+	}
+}
+
+func TestLoadRouteTracePluginAddsCheck(t *testing.T) {
+	registry := newTestRegistry()
+	mgr := plugin.NewManager()
+	ctx := &plugin.Context{Registry: registry, Config: map[string]interface{}{}}
+
+	if err := plugins.Load([]string{"route_trace"}, mgr, ctx); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	defer mgr.ShutdownAll()
+
+	check, ok := registry.GetCheck("route_trace")
+	if !ok {
+		t.Fatal("route_trace should be registered after loading plugin")
+	}
+	if check.Category() != "network" {
+		t.Fatalf("route_trace category: got %q, want %q", check.Category(), "network")
+	}
+}
+
+func TestLoadAllPluginsAddsRouteTrace(t *testing.T) {
+	registry := newTestRegistry()
+	mgr := plugin.NewManager()
+	ctx := &plugin.Context{Registry: registry, Config: map[string]interface{}{}}
+
+	if err := plugins.Load([]string{"all"}, mgr, ctx); err != nil {
+		t.Fatalf("Load all: %v", err)
+	}
+	defer mgr.ShutdownAll()
+
+	if _, ok := registry.GetCheck("route_trace"); !ok {
+		t.Fatal("route_trace should be registered after loading all plugins")
+	}
+}
+
+func TestLoadUnknownPluginIsNoOp(t *testing.T) {
+	registry := newTestRegistry()
+	mgr := plugin.NewManager()
+	ctx := &plugin.Context{Registry: registry, Config: map[string]interface{}{}}
+
+	if err := plugins.Load([]string{"nonexistent"}, mgr, ctx); err != nil {
+		t.Fatalf("Load unknown plugin should not error: %v", err)
+	}
+	if _, ok := registry.GetCheck("route_trace"); ok {
+		t.Fatal("route_trace should not be registered when only unknown plugin requested")
+	}
+}
+
+func TestParseCheckFiltersWithPluginCheck(t *testing.T) {
+	registry := newTestRegistry()
+	mgr := plugin.NewManager()
+	ctx := &plugin.Context{Registry: registry, Config: map[string]interface{}{}}
+	if err := plugins.Load([]string{"route_trace"}, mgr, ctx); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	defer mgr.ShutdownAll()
+
+	got, err := parseCheckFilters("route_trace", registry)
+	if err != nil {
+		t.Fatalf("parseCheckFilters: %v", err)
+	}
+	if len(got) != 1 || got[0] != "route_trace" {
+		t.Fatalf("got %v, want [route_trace]", got)
+	}
+}
+
+func TestParseCheckFiltersNetworkIncludesPluginCheck(t *testing.T) {
+	registry := newTestRegistry()
+	mgr := plugin.NewManager()
+	ctx := &plugin.Context{Registry: registry, Config: map[string]interface{}{}}
+	if err := plugins.Load([]string{"route_trace"}, mgr, ctx); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	defer mgr.ShutdownAll()
+
+	got, err := parseCheckFilters("network", registry)
+	if err != nil {
+		t.Fatalf("parseCheckFilters: %v", err)
+	}
+
+	want := []string{"dns_resolve", "port_connectivity", "public_ip", "route_trace"}
+	assertStringSlicesEqual(t, got, want)
 }

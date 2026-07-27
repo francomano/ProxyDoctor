@@ -18,6 +18,7 @@ core/
   checks/              Built-in diagnostic checks
   engine/              Registry, dependency ordering and orchestration
   plugin/              In-process extension interfaces and lifecycle manager
+  plugins/             Plugin implementations (e.g. route_trace)
   utils/               Proxy configuration parsing helpers
 ```
 
@@ -26,8 +27,9 @@ core/
 1. The CLI or server receives a target URL plus optional proxy settings.
 2. `core/utils.ParseProxyConfig` normalizes proxy input into `check.ProxyConfig`.
 3. `core/checks.RegisterDefaults` registers the built-in checks in `core/engine.CheckRegistry`.
-4. `core/engine.DiagnosisOrchestrator` creates direct/proxy adapters, resolves dependencies and executes the selected checks.
-5. Results are returned as `check.CheckResult` values and rendered by the CLI or HTTP server.
+4. If plugins are requested (CLI `--plugins` flag or server auto-loads all), `core/plugins.Load` initializes them via the plugin `Manager`, which calls `Init` and auto-registers any `CheckPlugin` checks.
+5. `core/engine.DiagnosisOrchestrator` creates direct/proxy adapters, resolves dependencies and executes the selected checks.
+6. Results are returned as `check.CheckResult` values and rendered by the CLI or HTTP server.
 
 ## Built-in checks
 
@@ -35,8 +37,11 @@ core/
 - `dns_resolve`: resolves the target hostname through the selected connection path.
 - `tls_certificate`: checks certificate validity, issuer, SANs, public key metadata, TLS version and cipher suite for HTTPS targets.
 - `port_connectivity`: tests common TCP ports on the target host.
-- `route_trace`: runs a best-effort traceroute and annotates public hops with country information.
 - `ipv6_leak`: checks whether the system and target support IPv6, compares the system's direct public IPv6 address against the proxy's IPv6 forwarding capability, and reports whether IPv6 traffic can bypass the configured proxy/tunnel.
+
+## Plugin checks
+
+- `route_trace` (plugin ID: `route_trace`): runs a best-effort traceroute and annotates public hops with country information. Loaded via `--plugins route_trace` on the CLI, or automatically by the server.
 
 ## Network adapters
 
@@ -68,7 +73,8 @@ Checks return structured results with:
 
 ## Contributor entry points
 
-- New checks start from `core/check/types.go`, `core/checks/register.go`, and the existing packages under `core/checks/`.
+- New built-in checks start from `core/check/types.go`, `core/checks/register.go`, and the existing packages under `core/checks/`.
+- New plugin checks start from `core/plugin/plugin.go` and `core/plugins/registry.go`. Wrap an existing check or create a new one under `core/plugins/<name>/`.
 - Adapter work starts from `core/adapters/`.
 - CLI work starts from `cmd/cli/commands/diagnose.go`.
 - GUI/API work starts from `cmd/server/main.go`.

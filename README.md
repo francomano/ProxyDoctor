@@ -174,10 +174,35 @@ go test -v ./...
 
 ProxyDoctor has a plugin system for extending functionality. Plugins can add new checks, export formats, or intercept diagnosis via middleware.
 
-```go
-import "github.com/francomano/proxydoctor/core/plugin"
+### Using plugins from the CLI
 
-// Create a plugin that adds checks
+```bash
+# Load a specific plugin
+proxydoctor diagnose --url https://example.com --plugins route_trace
+
+# Load multiple plugins
+proxydoctor diagnose --url https://example.com --plugins route_trace,other_plugin
+
+# Load all available plugins
+proxydoctor diagnose --url https://example.com --plugins all
+```
+
+The server automatically loads all available plugins at startup.
+
+### Available plugins
+
+| Plugin | ID | Description |
+|---|---|---|
+| Route Trace | `route_trace` | Traces network hops and annotates public hops with country information |
+
+### Creating a plugin
+
+```go
+import (
+    "github.com/francomano/proxydoctor/core/engine"
+    "github.com/francomano/proxydoctor/core/plugin"
+)
+
 type MyPlugin struct{}
 
 func (p *MyPlugin) ID() string          { return "my-plugin" }
@@ -191,9 +216,7 @@ func (p *MyPlugin) RegisterChecks(r *engine.CheckRegistry) error {
     return nil
 }
 
-// Register the plugin
-mgr := plugin.NewManager()
-mgr.Register(&MyPlugin{}, &plugin.Context{Registry: registry})
+// Register the plugin in core/plugins/registry.go
 ```
 
 Plugin interfaces: `CheckPlugin`, `ExportPlugin`, `MiddlewarePlugin`.
@@ -215,9 +238,10 @@ ProxyDoctor/
 ├── core/
 │   ├── engine/           ← Orchestration engine (tests included)
 │   ├── check/            ← Result types and interfaces (tests included)
-│   ├── checks/           ← Diagnostic checks (public_ip, dns_resolve, tls_cert, port_scan)
+│   ├── checks/           ← Built-in diagnostic checks (public_ip, dns_resolve, tls_cert, port_scan, ipv6_leak)
 │   ├── adapters/         ← Proxy implementations (Direct, HTTP, HTTPS, SOCKS4, SOCKS5)
-│   ├── plugin/           ← Plugin system (CheckPlugin, ExportPlugin, MiddlewarePlugin)
+│   ├── plugin/           ← Plugin system interfaces and lifecycle manager
+│   ├── plugins/          ← Plugin implementations (route_trace)
 │   └── utils/            ← Shared helpers (proxy URL parsing)
 ├── go.mod, go.sum        ← Go modules
 ├── README.md
@@ -235,8 +259,13 @@ ProxyDoctor/
 | `dns_resolve` | network | Resolves hostname to IP addresses through the current connection |
 | `tls_certificate` | tls | Validates TLS certificate (issuer, expiry, cipher suite, TLS version) |
 | `port_connectivity` | network | Tests TCP connectivity to ports 80, 443, 8080, 8443 |
-| `route_trace` | network | Traces network hops to the target and annotates public hops with country information |
 | `ipv6_leak` | leak | Detects whether IPv6 traffic bypasses the configured proxy/tunnel and exposes the system's real public IPv6 address |
+
+## Plugin Checks
+
+| Check | Category | Plugin ID | Description |
+|---|---|---|---|
+| `route_trace` | network | `route_trace` | Traces network hops to the target and annotates public hops with country information |
 
 ## Proxy Input Formats
 

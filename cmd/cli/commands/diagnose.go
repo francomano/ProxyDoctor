@@ -15,18 +15,21 @@ import (
 	"github.com/francomano/proxydoctor/core/check"
 	checkspkg "github.com/francomano/proxydoctor/core/checks"
 	"github.com/francomano/proxydoctor/core/engine"
+	"github.com/francomano/proxydoctor/core/plugin"
+	"github.com/francomano/proxydoctor/core/plugins"
 	"github.com/francomano/proxydoctor/core/utils"
 )
 
 var (
-	url       string
-	proxyStr  string
-	proxyType string
-	exportFmt string
-	output    string
-	compare   bool
-	timeout   string
-	checks    string
+	url         string
+	proxyStr    string
+	proxyType   string
+	exportFmt   string
+	output      string
+	compare     bool
+	timeout     string
+	checks      string
+	pluginNames string
 )
 
 const (
@@ -76,6 +79,7 @@ func init() {
 	diagnoseCmd.Flags().BoolVar(&compare, "compare", false, "Compare with direct connection")
 	diagnoseCmd.Flags().StringVar(&timeout, "timeout", engine.DefaultDiagnosisTimeout.String(), "Diagnosis timeout (1s to 5m, e.g., 10s, 2m)")
 	diagnoseCmd.Flags().StringVar(&checks, "checks", "", "Comma-separated check IDs or categories to run (empty/all = all checks)")
+	diagnoseCmd.Flags().StringVar(&pluginNames, "plugins", "", "Comma-separated plugin IDs to load (e.g., route_trace) or 'all'")
 
 	diagnoseCmd.MarkFlagRequired("url")
 }
@@ -99,6 +103,20 @@ func runDiagnose(cmd *cobra.Command, args []string) error {
 	registry := engine.NewCheckRegistry()
 	if err := checkspkg.RegisterDefaults(registry); err != nil {
 		return err
+	}
+
+	if pluginNames != "" {
+		mgr := plugin.NewManager()
+		names := strings.Split(pluginNames, ",")
+		for i := range names {
+			names[i] = strings.TrimSpace(names[i])
+		}
+		ctx := &plugin.Context{Registry: registry, Config: map[string]interface{}{}}
+		if err := plugins.Load(names, mgr, ctx); err != nil {
+			fmt.Printf("❌ Plugin load failed: %v\n", err)
+			return err
+		}
+		defer mgr.ShutdownAll()
 	}
 
 	checkIDs, err := parseCheckFilters(checks, registry)
