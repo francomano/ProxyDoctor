@@ -175,18 +175,71 @@ ProxyDoctor has a plugin system for extending functionality. Plugins can add new
 
 ### Using plugins from the CLI
 
+Load plugins alongside a diagnosis:
+
 ```bash
-# Load a specific plugin
-proxydoctor diagnose --url https://example.com --plugins route_trace
+# Load a specific plugin during diagnosis
+./run.sh cli diagnose --url https://example.com --plugins route_trace
 
 # Load multiple plugins
-proxydoctor diagnose --url https://example.com --plugins route_trace,other_plugin
+./run.sh cli diagnose --url https://example.com --plugins route_trace,mcp_server
 
 # Load all available plugins
-proxydoctor diagnose --url https://example.com --plugins all
+./run.sh cli diagnose --url https://example.com --plugins all
 ```
 
-The server automatically loads all available plugins at startup.
+Start a long-running plugin standalone (e.g. MCP server):
+
+```bash
+./run.sh cli --plugins mcp_server
+```
+
+Load multiple long-running plugins:
+
+```bash
+./run.sh cli --plugins mcp_server,route_trace
+```
+
+The server (`./run.sh server`) automatically loads all plugins at startup, including the MCP server on `:9090`.
+
+### MCP Server
+
+The MCP Server plugin exposes ProxyDoctor's diagnostic tools via the [Model Context Protocol](https://modelcontextprotocol.io) (JSON-RPC 2.0).
+
+Start it standalone:
+
+```bash
+./run.sh cli --plugins mcp_server
+# MCP server listening on :9090
+```
+
+Or start the main server (MCP starts alongside on `:9090`):
+
+```bash
+./run.sh server
+```
+
+Once running, send JSON-RPC 2.0 requests to `POST http://localhost:9090/mcp`:
+
+**List available tools:**
+```json
+{"jsonrpc":"2.0","id":1,"method":"tools/list"}
+```
+
+**Run a diagnosis:**
+```json
+{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"diagnose","arguments":{"url":"https://example.com","proxy":"socks5://77.245.76.107:1080","proxy_type":"socks5"}}}
+```
+
+**Compare direct vs proxied:**
+```json
+{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"compare","arguments":{"url":"https://example.com","proxy":"socks5://77.245.76.107:1080"}}}
+```
+
+**List checks:**
+```json
+{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"list_checks"}}
+```
 
 ### Available plugins
 
