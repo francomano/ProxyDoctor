@@ -26,7 +26,7 @@ Most diagnosis features should start from these files:
 | #13 | Error messages and logging | Start from `cmd/cli/commands/diagnose.go` for verbosity flags/output, and from `core/checks/*` for contextual errors. Shared logger belongs in `core/utils/`. |
 | #21 | Installation methods | Start from `go.mod`, `run.sh`, `setup.sh`, `README.md`, and the CLI entry point `cmd/cli/main.go`. Release automation can be added later outside `.github` if the repo intentionally keeps GitHub metadata out. |
 | #22 | Shell completion | Start from Cobra setup in `cmd/cli/main.go` and command definitions under `cmd/cli/commands/`. |
-| #25 | MCP server plugin | Start from `core/plugin/plugin.go` and `cmd/server/main.go`. Keep protocol-specific server code isolated under a plugin/example package. |
+| #25 | MCP server plugin | ✅ Implemented in `core/plugins/mcp/plugin.go`. Exposes `diagnose`, `list_checks`, and `compare` as MCP tools on an HTTP server (default :9090). Protocol-specific server code lives under `core/plugins/mcp/`. |
 | #26 | Prometheus exporter plugin | Start from `core/plugin/plugin.go`, especially `ExportPlugin` and `MiddlewarePlugin`. Metrics collection should hook after diagnosis reports are produced. |
 | #27 | Watch mode plugin | Start from `core/plugin/plugin.go` and `core/engine/orchestrator.go`. Scheduling/storage should live outside the core check packages. |
 | #30 | Slack/Discord bot plugin | Start from `core/plugin/plugin.go` (`MiddlewarePlugin`) and `cmd/server/main.go` request/response models. |

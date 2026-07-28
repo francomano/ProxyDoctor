@@ -85,7 +85,7 @@ func init() {
 }
 
 func runDiagnose(cmd *cobra.Command, args []string) error {
-	fmt.Printf("🔍 ProxyDoctor v0.2.1 - Proxy Diagnostics Tool\n")
+	fmt.Printf("🔍 ProxyDoctor v0.3.0 - Proxy Diagnostics Tool\n")
 	fmt.Printf("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n")
 
 	diagnosisTimeout, err := parseDiagnosisTimeout(timeout)

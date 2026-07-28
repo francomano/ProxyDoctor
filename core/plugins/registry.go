@@ -3,14 +3,16 @@ package plugins
 import (
 	"fmt"
 
+	mcpplugin "github.com/francomano/proxydoctor/core/plugins/mcp"
 	routetraceplugin "github.com/francomano/proxydoctor/core/plugins/routetrace"
 	"github.com/francomano/proxydoctor/core/plugin"
 )
 
 // Available returns all compiled-in plugins keyed by ID.
-func Available() map[string]plugin.CheckPlugin {
-	return map[string]plugin.CheckPlugin{
+func Available() map[string]plugin.Plugin {
+	return map[string]plugin.Plugin{
 		"route_trace": routetraceplugin.New(),
+		"mcp_server":  mcpplugin.New(),
 	}
 }
 

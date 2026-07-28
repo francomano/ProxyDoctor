@@ -67,7 +67,7 @@ ProxyDoctor is a CLI-first tool to:
 - ✅ Unit tests (6 passing tests, engine coverage)
 - ✅ Plugin system (CheckPlugin, ExportPlugin, MiddlewarePlugin interfaces)
 - 🧭 Focused backlog for optional checks such as DNS leak, WebRTC leak, geolocation and IP reputation
-- 🔲 Community plugins (MPC server, Prometheus metrics, custom reports)
+- ✅ MCP server plugin (Model Context Protocol, exposes diagnose/compare tools on port :9090)
 
 ## Requirements
 
@@ -240,7 +240,7 @@ ProxyDoctor/
 │   ├── checks/           ← Built-in diagnostic checks (public_ip, dns_resolve, tls_cert, port_scan, ipv6_leak)
 │   ├── adapters/         ← Proxy implementations (Direct, HTTP, HTTPS, SOCKS4, SOCKS5)
 │   ├── plugin/           ← Plugin system interfaces and lifecycle manager
-│   ├── plugins/          ← Plugin implementations (route_trace)
+│   ├── plugins/          ← Plugin implementations (route_trace, mcp_server)
 │   └── utils/            ← Shared helpers (proxy URL parsing)
 ├── go.mod, go.sum        ← Go modules
 ├── README.md

@@ -1,8 +1,9 @@
 # Changelog
 
-## Unreleased
+## v0.3.0 - 2026-07-29
 
 ### Added
+- **MCP server plugin** (`core/plugins/mcp/plugin.go`): exposes `diagnose`, `list_checks`, and `compare` as MCP (Model Context Protocol) tools via HTTP JSON-RPC on `:9090`. Registered in `core/plugins/registry.go`. Closes #25.
 - `ipv6_leak` check (`core/checks/ipv6_leak/check.go`): detects whether the system and target support IPv6, discovers the system's real public IPv6 address by probing directly (bypassing any configured proxy/tunnel), tests whether the configured proxy forwards IPv6 destinations, and reports whether IPv6 traffic would bypass the proxy/tunnel and leak the system's real address. Registered in `core/checks/register.go`.
 - Plugin system with `--plugins` CLI flag (`cmd/cli/commands/diagnose.go`). Plugins are loaded at runtime via `core/plugins.Load()`. The server auto-loads all available plugins.
 - `route_trace` plugin (`core/plugins/routetrace/plugin.go`): wraps the route trace check as a `CheckPlugin`. Loaded via `--plugins route_trace` or `--plugins all`.
