@@ -12,7 +12,9 @@ if [ $# -lt 1 ]; then
     echo ""
     echo "Examples:"
     echo "  $0 server"
+    echo "  $0 cli --plugins mcp_server"
     echo "  $0 cli diagnose --proxy http://localhost:8080"
+    echo "  $0 cli diagnose --plugins route_trace"
     echo "  $0 cli list-checks"
     echo "  $0 test"
     exit 1
