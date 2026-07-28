@@ -9,11 +9,16 @@ Most diagnosis features should start from these files:
 - `core/check/types.go` — `Checker`, `CheckResult`, `ExecutionContext`, `NetworkAdapter` contracts.
 - `core/checks/register.go` — built-in check registration.
 - `core/plugin/plugin.go` — plugin interfaces (`CheckPlugin`, `ExportPlugin`, `MiddlewarePlugin`).
-- `core/plugins/registry.go` — plugin catalog and loading.
+- `core/plugins/registry.go` — plugin catalog and `Available()` map.
 - `core/engine/orchestrator.go` — direct/proxy execution and comparison flow.
 - `cmd/cli/commands/diagnose.go` — CLI flags, filtering and text/JSON/Markdown output.
-- `cmd/server/main.go` — web GUI and JSON API.
+- `cmd/cli/commands/plugins.go` — `--plugins` flag, shared `loadPlugins()`, and standalone `runPlugins()`.
+- `cmd/server/main.go` — web GUI and JSON API (does NOT load plugins).
 - `ARCHITECTURE.md` — implemented architecture overview.
+
+Plugins have two modes:
+- **Check plugins** (`route_trace`): register a `Check` via `RegisterChecks()`. Must be loaded with `diagnose --plugins <id>`.
+- **Standalone plugins** (`mcp_server`): start a long-running process in `Init()`. Loaded with `proxyctl --plugins <id>` (blocks until SIGINT).
 
 ## Open issues
 
@@ -26,10 +31,10 @@ Most diagnosis features should start from these files:
 | #13 | Error messages and logging | Start from `cmd/cli/commands/diagnose.go` for verbosity flags/output, and from `core/checks/*` for contextual errors. Shared logger belongs in `core/utils/`. |
 | #21 | Installation methods | Start from `go.mod`, `run.sh`, `setup.sh`, `README.md`, and the CLI entry point `cmd/cli/main.go`. Release automation can be added later outside `.github` if the repo intentionally keeps GitHub metadata out. |
 | #22 | Shell completion | Start from Cobra setup in `cmd/cli/main.go` and command definitions under `cmd/cli/commands/`. |
-| #25 | MCP server plugin | ✅ Implemented in `core/plugins/mcp/plugin.go`. Exposes `diagnose`, `list_checks`, and `compare` as MCP tools on an HTTP server (default :9090). Protocol-specific server code lives under `core/plugins/mcp/`. |
-| #26 | Prometheus exporter plugin | Start from `core/plugin/plugin.go`, especially `ExportPlugin` and `MiddlewarePlugin`. Metrics collection should hook after diagnosis reports are produced. |
-| #27 | Watch mode plugin | Start from `core/plugin/plugin.go` and `core/engine/orchestrator.go`. Scheduling/storage should live outside the core check packages. |
-| #30 | Slack/Discord bot plugin | Start from `core/plugin/plugin.go` (`MiddlewarePlugin`) and `cmd/server/main.go` request/response models. |
+| #25 | MCP server plugin | ✅ Implemented in `core/plugins/mcp/plugin.go`. Load with `proxyctl --plugins mcp_server` (standalone, blocks). Exposes `diagnose`, `list_checks`, and `compare` as MCP tools on `:9090`. |
+| #26 | Prometheus exporter plugin | Implement as a standalone plugin (`--plugins prometheus`). Start from `core/plugin/plugin.go`. Serve `/metrics` on a configurable port via HTTP in `Init()`. |
+| #27 | Watch mode plugin | Implement as a standalone plugin (`--plugins watch`). Start from `core/plugin/plugin.go` and `core/engine/orchestrator.go`. Scheduling/storage should live outside the core check packages. |
+| #30 | Slack/Discord bot plugin | Implement as a standalone plugin (`--plugins slack` or `--plugins discord`). Start from `core/plugin/plugin.go`. Use `MiddlewarePlugin` to hook into diagnosis lifecycle if paired with `diagnose`. |
 | #34 | VPN proxy/profile support | Start from `core/check/types.go`, `core/utils/proxyconfig.go`, `core/adapters/factory.go`, and `core/checks/route_trace/check.go`. |
 | #35 | Local proxy integration-test fixtures | Start from `core/adapters/*` and add fixture-based tests under `core/adapters/` or `core/checks/`. |
 | #36 | Authenticated proxy support | Start from `core/utils/proxyconfig.go`, `core/adapters/http_proxy.go`, and `core/adapters/socks.go`. Add redaction helpers in `core/utils/` if needed. |
