@@ -9,25 +9,15 @@ import (
 	"github.com/francomano/proxydoctor/core/adapters"
 	checkspkg "github.com/francomano/proxydoctor/core/checks"
 	"github.com/francomano/proxydoctor/core/engine"
-	"github.com/francomano/proxydoctor/core/plugin"
-	"github.com/francomano/proxydoctor/core/plugins"
 	"github.com/francomano/proxydoctor/core/utils"
 )
 
-// newRegistry builds a check registry with every built-in check and all
-// available plugins registered.
+// newRegistry builds a check registry with every built-in check.
 func newRegistry() *engine.CheckRegistry {
 	registry := engine.NewCheckRegistry()
 	if err := checkspkg.RegisterDefaults(registry); err != nil {
 		log.Fatalf("failed to register checks: %v", err)
 	}
-
-	mgr := plugin.NewManager()
-	ctx := &plugin.Context{Registry: registry, Config: map[string]interface{}{}}
-	if err := plugins.Load([]string{"all"}, mgr, ctx); err != nil {
-		log.Printf("warning: failed to load some plugins: %v", err)
-	}
-
 	return registry
 }
 

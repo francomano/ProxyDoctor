@@ -184,46 +184,36 @@ Available plugins are loaded via the `--plugins` flag on `./run.sh cli`.
 
 ### Using plugins
 
-**route_trace** adds a check — must be used with `diagnose`:
+**route_trace** — registra un nuovo check utilizzabile con `diagnose`:
 
 ```bash
 ./run.sh cli diagnose --url https://example.com --plugins route_trace
 ```
 
-**mcp_server** runs as a standalone JSON-RPC 2.0 server:
+**mcp_server** — avvia un server JSON-RPC 2.0 standalone:
 
 ```bash
 ./run.sh cli --plugins mcp_server
 ```
 
-Once running, send requests to `POST http://localhost:9090/mcp`:
+Una volta avviato, invia richieste a `POST http://localhost:9090/mcp`:
 
 ```json
 {"jsonrpc":"2.0","id":1,"method":"tools/list"}
 ```
 
 ```json
-{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"diagnose","arguments":{"url":"https://example.com","proxy":"socks5://77.245.76.107:1080","proxy_type":"socks5"}}}
+{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"diagnose","arguments":{"url":"https://example.com"}}}
 ```
 
 ```json
 {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"compare","arguments":{"url":"https://example.com","proxy":"socks5://77.245.76.107:1080"}}}
 ```
 
-```json
-{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"list_checks"}}
-```
-
-Load multiple plugins at once:
+Carica più plugin insieme:
 
 ```bash
 ./run.sh cli --plugins route_trace,mcp_server
-```
-
-Load all available plugins:
-
-```bash
-./run.sh cli --plugins all
 ```
 
 ### Creating a plugin
