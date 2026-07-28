@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"html"
 	"os"
+	"os/signal"
 	"sort"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -55,6 +57,9 @@ It analyzes connectivity through proxies and identifies issues.`,
 		fmt.Println("  by Marco Francomano — github.com/francomano/ProxyDoctor")
 		fmt.Println()
 	},
+	Run: func(cmd *cobra.Command, args []string) {
+		runPlugins()
+	},
 }
 
 // diagnoseCmd is the main diagnose command
@@ -71,6 +76,8 @@ func init() {
 	RootCmd.AddCommand(listChecksCmd)
 	RootCmd.AddCommand(versionCmd)
 
+	RootCmd.PersistentFlags().StringVar(&pluginNames, "plugins", "", "Comma-separated plugin IDs to load (e.g., route_trace, mcp_server) or 'all'")
+
 	diagnoseCmd.Flags().StringVarP(&url, "url", "u", "", "URL to diagnose (required)")
 	diagnoseCmd.Flags().StringVarP(&proxyStr, "proxy", "p", "", "Proxy URL (e.g., http://localhost:8080, socks5://localhost:1080)")
 	diagnoseCmd.Flags().StringVar(&proxyType, "proxy-type", "auto", "Proxy type: auto, http, https, socks4, socks5")
@@ -79,7 +86,6 @@ func init() {
 	diagnoseCmd.Flags().BoolVar(&compare, "compare", false, "Compare with direct connection")
 	diagnoseCmd.Flags().StringVar(&timeout, "timeout", engine.DefaultDiagnosisTimeout.String(), "Diagnosis timeout (1s to 5m, e.g., 10s, 2m)")
 	diagnoseCmd.Flags().StringVar(&checks, "checks", "", "Comma-separated check IDs or categories to run (empty/all = all checks)")
-	diagnoseCmd.Flags().StringVar(&pluginNames, "plugins", "", "Comma-separated plugin IDs to load (e.g., route_trace) or 'all'")
 
 	diagnoseCmd.MarkFlagRequired("url")
 }
@@ -729,4 +735,45 @@ func stringSliceEvidence(value interface{}) []string {
 	default:
 		return nil
 	}
+}
+
+func runPlugins() {
+	if pluginNames == "" {
+		fmt.Println("proxyctl: use --plugins to specify plugins to load")
+		fmt.Println("Available commands:")
+		fmt.Println("  diagnose      Run a comprehensive diagnosis on a URL")
+		fmt.Println("  list-checks   List all available checks")
+		fmt.Println("  version       Show version information")
+		fmt.Println()
+		fmt.Println("Examples:")
+		fmt.Println("  proxyctl --plugins mcp_server")
+		fmt.Println("  proxyctl diagnose --url https://example.com --plugins route_trace")
+		return
+	}
+
+	registry := engine.NewCheckRegistry()
+	if err := checkspkg.RegisterDefaults(registry); err != nil {
+		fmt.Printf("failed to register checks: %v\n", err)
+		return
+	}
+
+	mgr := plugin.NewManager()
+	ctx := &plugin.Context{Registry: registry, Config: map[string]interface{}{}}
+	names := strings.Split(pluginNames, ",")
+	for i := range names {
+		names[i] = strings.TrimSpace(names[i])
+	}
+	if err := plugins.Load(names, mgr, ctx); err != nil {
+		fmt.Printf("failed to load plugins: %v\n", err)
+		return
+	}
+	defer mgr.ShutdownAll()
+
+	fmt.Printf("Plugins loaded: %s\n", pluginNames)
+	fmt.Println("Press Ctrl+C to stop")
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	<-sigCh
+	fmt.Println("\nShutting down...")
 }
