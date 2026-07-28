@@ -171,82 +171,60 @@ go test -v ./...
 
 ## Plugin System
 
-ProxyDoctor has a plugin system for extending functionality. Plugins can add new checks, export formats, or intercept diagnosis via middleware.
+ProxyDoctor has a plugin system for extending functionality. Plugins can add new checks or long-running services.
 
-### Using plugins from the CLI
+Available plugins are loaded via the `--plugins` flag on `./run.sh cli`.
 
-Load plugins alongside a diagnosis:
+### Available plugins
+
+| Plugin | ID | Type | Description |
+|---|---|---|---|
+| Route Trace | `route_trace` | check | Traces network hops and annotates public hops with country information |
+| MCP Server | `mcp_server` | standalone | Exposes diagnose/compare/list_checks tools via the Model Context Protocol on `:9090` |
+
+### Using plugins
+
+**route_trace** adds a check — must be used with `diagnose`:
 
 ```bash
-# Load a specific plugin during diagnosis
 ./run.sh cli diagnose --url https://example.com --plugins route_trace
-
-# Load multiple plugins
-./run.sh cli diagnose --url https://example.com --plugins route_trace,mcp_server
-
-# Load all available plugins
-./run.sh cli diagnose --url https://example.com --plugins all
 ```
 
-Start a long-running plugin standalone (e.g. MCP server):
+**mcp_server** runs as a standalone JSON-RPC 2.0 server:
 
 ```bash
 ./run.sh cli --plugins mcp_server
 ```
 
-Load multiple long-running plugins:
+Once running, send requests to `POST http://localhost:9090/mcp`:
 
-```bash
-./run.sh cli --plugins mcp_server,route_trace
-```
-
-The server (`./run.sh server`) automatically loads all plugins at startup, including the MCP server on `:9090`.
-
-### MCP Server
-
-The MCP Server plugin exposes ProxyDoctor's diagnostic tools via the [Model Context Protocol](https://modelcontextprotocol.io) (JSON-RPC 2.0).
-
-Start it standalone:
-
-```bash
-./run.sh cli --plugins mcp_server
-# MCP server listening on :9090
-```
-
-Or start the main server (MCP starts alongside on `:9090`):
-
-```bash
-./run.sh server
-```
-
-Once running, send JSON-RPC 2.0 requests to `POST http://localhost:9090/mcp`:
-
-**List available tools:**
 ```json
 {"jsonrpc":"2.0","id":1,"method":"tools/list"}
 ```
 
-**Run a diagnosis:**
 ```json
 {"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"diagnose","arguments":{"url":"https://example.com","proxy":"socks5://77.245.76.107:1080","proxy_type":"socks5"}}}
 ```
 
-**Compare direct vs proxied:**
 ```json
 {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"compare","arguments":{"url":"https://example.com","proxy":"socks5://77.245.76.107:1080"}}}
 ```
 
-**List checks:**
 ```json
 {"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"list_checks"}}
 ```
 
-### Available plugins
+Load multiple plugins at once:
 
-| Plugin | ID | Description |
-|---|---|---|
-| Route Trace | `route_trace` | Traces network hops and annotates public hops with country information |
-| MCP Server | `mcp_server` | Exposes diagnose/compare/list_checks tools via the Model Context Protocol on `:9090` |
+```bash
+./run.sh cli --plugins route_trace,mcp_server
+```
+
+Load all available plugins:
+
+```bash
+./run.sh cli --plugins all
+```
 
 ### Creating a plugin
 
