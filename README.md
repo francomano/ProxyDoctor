@@ -55,7 +55,7 @@ ProxyDoctor is a CLI-first tool to:
 > This version was reviewed and bug-fixed with OpenCode using GPT 5.5 before delivery.
 
 
-**v0.2.1 (Alpha)**
+**v0.3.0 (Alpha)**
 - ✅ Core engine with check registry and dependency DAG
 - ✅ CLI with diagnose and list-checks commands
 - ✅ HTTP/HTTPS proxy support in `diagnose --proxy`
@@ -193,6 +193,7 @@ The server automatically loads all available plugins at startup.
 | Plugin | ID | Description |
 |---|---|---|
 | Route Trace | `route_trace` | Traces network hops and annotates public hops with country information |
+| MCP Server | `mcp_server` | Exposes diagnose/compare/list_checks tools via the Model Context Protocol on `:9090` |
 
 ### Creating a plugin
 
