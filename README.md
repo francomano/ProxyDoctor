@@ -210,7 +210,25 @@ Una volta avviato, invia richieste a `POST http://localhost:9090/mcp`:
 {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"compare","arguments":{"url":"https://example.com","proxy":"socks5://77.245.76.107:1080"}}}
 ```
 
-Carica più plugin insieme:
+### OpenCode / AI Assistant Integration
+
+ProxyDoctor's MCP server is compatible with [OpenCode](https://opencode.ai) and any MCP-compatible AI coding assistant. The `opencode.jsonc` file registers it as a remote MCP server:
+
+```jsonc
+{
+  "mcp": {
+    "proxydoctor": {
+      "type": "remote",
+      "url": "http://localhost:9090/mcp",
+      "enabled": true
+    }
+  }
+}
+```
+
+Once the MCP server is running, the assistant can use `diagnose`, `compare`, and `list_checks` as native tools — no curl needed.
+
+### Carica più plugin insieme
 
 ```bash
 ./run.sh cli --plugins route_trace,mcp_server

@@ -2,11 +2,14 @@ package mcp
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
 
 	checkspkg "github.com/francomano/proxydoctor/core/checks"
 	"github.com/francomano/proxydoctor/core/engine"
@@ -325,11 +328,43 @@ func TestHTTPHandlerInvalidJSON(t *testing.T) {
 	}
 }
 
-func TestHTTPHandlerWrongMethod(t *testing.T) {
+func TestHTTPHandlerSSE(t *testing.T) {
 	p := newHandlerPlugin(t)
 	defer p.Shutdown()
 
-	r := httptest.NewRequest(http.MethodGet, "/mcp", nil)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	r := httptest.NewRequest(http.MethodGet, "/mcp", nil).WithContext(ctx)
+	w := httptest.NewRecorder()
+
+	done := make(chan struct{})
+	go func() {
+		p.handleMCP(w, r)
+		close(done)
+	}()
+
+	// Let the handler write the endpoint event.
+	time.Sleep(50 * time.Millisecond)
+	cancel()
+	<-done
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status: got %d, want 200", w.Code)
+	}
+	if ct := w.Header().Get("Content-Type"); ct != "text/event-stream" {
+		t.Fatalf("Content-Type: got %q, want %q", ct, "text/event-stream")
+	}
+	if !strings.Contains(w.Body.String(), "event: endpoint") {
+		t.Fatal("expected endpoint event in SSE stream")
+	}
+}
+
+func TestHTTPHandlerUnsupportedMethod(t *testing.T) {
+	p := newHandlerPlugin(t)
+	defer p.Shutdown()
+
+	r := httptest.NewRequest(http.MethodPut, "/mcp", nil)
 	w := httptest.NewRecorder()
 
 	p.handleMCP(w, r)
@@ -369,6 +404,9 @@ func TestStartAndStopServer(t *testing.T) {
 		t.Fatalf("startServer: %v", err)
 	}
 	defer p.Shutdown()
+
+	// Give the server goroutine time to bind.
+	time.Sleep(100 * time.Millisecond)
 
 	url := fmt.Sprintf("http://localhost:%d/mcp", port)
 	resp, err := http.Post(
@@ -410,10 +448,14 @@ func newHandlerPlugin(t *testing.T) *MCPServerPlugin {
 // handleMCPRequest routes an MCP method without the HTTP layer.
 func (p *MCPServerPlugin) handleMCPRequest(req jsonRPCRequest) jsonRPCResponse {
 	switch req.Method {
+	case "initialize":
+		return p.handleInitialize(req)
 	case "tools/list":
 		return p.handleToolsList(req)
 	case "tools/call":
 		return p.handleToolsCall(req)
+	case "notifications/initialized":
+		return jsonRPCResponse{JSONRPC: "2.0"}
 	default:
 		return newErrorResponse(req.ID, -32601, fmt.Sprintf("Method %q not found", req.Method))
 	}

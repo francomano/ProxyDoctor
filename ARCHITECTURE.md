@@ -43,6 +43,10 @@ core/
 
 - `route_trace` (plugin ID: `route_trace`): runs a best-effort traceroute and annotates public hops with country information. Loaded via `--plugins route_trace` on the CLI, or automatically by the server.
 
+## Standalone plugins
+
+- `mcp_server` (plugin ID: `mcp_server`): exposes `diagnose`, `compare`, and `list_checks` as MCP (Model Context Protocol) tools via HTTP JSON-RPC 2.0 on `:9090`. Supports both direct POST and SSE (Server-Sent Events) transport. Compatible with OpenCode and other MCP clients. Loaded with `--plugins mcp_server` (no subcommand, blocks until SIGINT).
+
 ## Network adapters
 
 Every adapter implements `check.NetworkAdapter`:

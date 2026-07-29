@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/francomano/proxydoctor/core/adapters"
@@ -26,10 +27,15 @@ type MCPServerPlugin struct {
 	port     int
 	registry *engine.CheckRegistry
 	server   *http.Server
+
+	mu       sync.Mutex
+	sessions map[string]chan<- []byte
 }
 
 func New() *MCPServerPlugin {
-	return &MCPServerPlugin{}
+	return &MCPServerPlugin{
+		sessions: make(map[string]chan<- []byte),
+	}
 }
 
 func (p *MCPServerPlugin) ID() string          { return PluginID }
@@ -85,10 +91,63 @@ func (p *MCPServerPlugin) startServer() error {
 // ---------------------------------------------------------------------------
 
 func (p *MCPServerPlugin) handleMCP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
+	switch r.Method {
+	case http.MethodGet:
+		p.handleSSE(w, r)
+	case http.MethodPost:
+		p.handleJSONRPC(w, r)
+	default:
 		writeJSON(w, http.StatusMethodNotAllowed, newErrorResponse(nil, -32000, "Method not allowed"))
+	}
+}
+
+// handleSSE establishes an SSE stream for MCP transport.
+func (p *MCPServerPlugin) handleSSE(w http.ResponseWriter, r *http.Request) {
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "Streaming unsupported", http.StatusInternalServerError)
 		return
 	}
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+
+	sessionID := fmt.Sprintf("sess_%d", time.Now().UnixNano())
+	msgCh := make(chan []byte, 64)
+
+	p.mu.Lock()
+	p.sessions[sessionID] = msgCh
+	p.mu.Unlock()
+
+	defer func() {
+		p.mu.Lock()
+		delete(p.sessions, sessionID)
+		p.mu.Unlock()
+	}()
+
+	endpointURL := fmt.Sprintf("/mcp?session_id=%s", sessionID)
+	fmt.Fprintf(w, "event: endpoint\ndata: %s\n\n", endpointURL)
+	flusher.Flush()
+
+	ctx := r.Context()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case msg, ok := <-msgCh:
+			if !ok {
+				return
+			}
+			fmt.Fprintf(w, "event: message\ndata: %s\n\n", string(msg))
+			flusher.Flush()
+		}
+	}
+}
+
+// handleJSONRPC processes JSON-RPC requests via POST.
+func (p *MCPServerPlugin) handleJSONRPC(w http.ResponseWriter, r *http.Request) {
+	sessionID := r.URL.Query().Get("session_id")
 
 	var req jsonRPCRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -103,15 +162,66 @@ func (p *MCPServerPlugin) handleMCP(w http.ResponseWriter, r *http.Request) {
 
 	var resp jsonRPCResponse
 	switch req.Method {
+	case "initialize":
+		resp = p.handleInitialize(req)
 	case "tools/list":
 		resp = p.handleToolsList(req)
 	case "tools/call":
 		resp = p.handleToolsCall(req)
+	case "notifications/initialized":
+		// No response needed for notifications.
+		w.WriteHeader(http.StatusAccepted)
+		w.Write([]byte("accepted"))
+		return
 	default:
+		if strings.HasPrefix(req.Method, "notifications/") {
+			// Silently accept other notifications.
+			w.WriteHeader(http.StatusAccepted)
+			w.Write([]byte("accepted"))
+			return
+		}
 		resp = newErrorResponse(req.ID, -32601, fmt.Sprintf("Method %q not found", req.Method))
 	}
 
+	// If this POST is part of an SSE session, send response through the session channel.
+	if sessionID != "" {
+		p.mu.Lock()
+		ch, ok := p.sessions[sessionID]
+		p.mu.Unlock()
+		if ok {
+			respBytes, _ := json.Marshal(resp)
+			select {
+			case ch <- respBytes:
+			default:
+			}
+			w.WriteHeader(http.StatusAccepted)
+			w.Write([]byte("accepted"))
+			return
+		}
+		// Session not found: return error
+		writeJSON(w, http.StatusNotFound, newErrorResponse(req.ID, -32000, "Session not found"))
+		return
+	}
+
+	// Direct POST (no session): return response inline.
 	writeJSON(w, http.StatusOK, resp)
+}
+
+// ---------------------------------------------------------------------------
+// initialize
+// ---------------------------------------------------------------------------
+
+func (p *MCPServerPlugin) handleInitialize(req jsonRPCRequest) jsonRPCResponse {
+	return newSuccessResponse(req.ID, map[string]interface{}{
+		"protocolVersion": "2024-11-05",
+		"capabilities": map[string]interface{}{
+			"tools": map[string]interface{}{},
+		},
+		"serverInfo": map[string]interface{}{
+			"name":    "ProxyDoctor",
+			"version": PluginVersion,
+		},
+	})
 }
 
 // ---------------------------------------------------------------------------

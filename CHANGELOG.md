@@ -4,6 +4,9 @@
 
 ### Added
 - **MCP server plugin** (`core/plugins/mcp/plugin.go`): exposes `diagnose`, `list_checks`, and `compare` as MCP (Model Context Protocol) tools via HTTP JSON-RPC on `:9090`. Registered in `core/plugins/registry.go`. Closes #25.
+- **SSE transport** (`core/plugins/mcp/plugin.go`): MCP server now supports Server-Sent Events (GET /mcp) for streaming transport in addition to direct JSON-RPC POST.
+- **MCP initialize handshake**: MCP server implements the `initialize` method per the MCP spec (protocol version `2024-11-05`), enabling compatibility with MCP clients like OpenCode.
+- **OpenCode integration** (`opencode.jsonc`): configuration file for OpenCode AI assistant, registering ProxyDoctor as a remote MCP server at `http://localhost:9090/mcp` with tools `diagnose`, `compare`, and `list_checks`.
 - `ipv6_leak` check (`core/checks/ipv6_leak/check.go`): detects whether the system and target support IPv6, discovers the system's real public IPv6 address by probing directly (bypassing any configured proxy/tunnel), tests whether the configured proxy forwards IPv6 destinations, and reports whether IPv6 traffic would bypass the proxy/tunnel and leak the system's real address. Registered in `core/checks/register.go`.
 - Plugin system with `--plugins` CLI flag (`cmd/cli/commands/diagnose.go`). Plugins are loaded at runtime via `core/plugins.Load()`. The server auto-loads all available plugins.
 - `route_trace` plugin (`core/plugins/routetrace/plugin.go`): wraps the route trace check as a `CheckPlugin`. Loaded via `--plugins route_trace` or `--plugins all`.
