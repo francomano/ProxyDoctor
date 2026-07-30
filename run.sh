@@ -26,12 +26,10 @@ shift
 case "$CMD" in
     server)
         echo "🚀 Starting ProxyDoctor server on :8080"
-        go build -o ./bin/proxydoctor-server ./cmd/server
         ./bin/proxydoctor-server
         ;;
     cli)
         echo "🔍 Running ProxyDoctor CLI"
-        go build -o ./bin/proxydoctor ./cmd/cli
         ./bin/proxydoctor "$@"
         ;;
     test)
