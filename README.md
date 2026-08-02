@@ -215,37 +215,19 @@ Available plugins are loaded via the `--plugins` flag on `./run.sh cli`.
 
 ### Using plugins
 
-**route_trace** — registra un nuovo check utilizzabile con `diagnose`:
+**route_trace** — registers a new check you can use with `diagnose`:
 
 ```bash
 ./run.sh cli diagnose --url https://example.com --plugins route_trace
 ```
 
-**mcp_server** — avvia un server JSON-RPC 2.0 standalone:
+**mcp_server** — starts a standalone JSON-RPC 2.0 server:
 
 ```bash
 ./run.sh cli --plugins mcp_server
 ```
 
-**local_proxy** — espone il proxy testato come proxy locale, così browser, curl e wget navigano attraverso di esso:
-
-```bash
-./run.sh cli --plugins local_proxy --proxy socks5://77.245.76.107:1080 --proxy-type socks5
-```
-
-Vedrai l'indirizzo locale e i comandi pronti da copiare:
-
-```text
-🚀 Local forward proxy ready — route your traffic through it:
-
-   Browser   → set HTTP/HTTPS proxy to http://127.0.0.1:8081
-   curl      → curl -x http://127.0.0.1:8081 https://example.com
-   wget      → wget -e use_proxy=yes -e http_proxy=http://127.0.0.1:8081 https://example.com
-```
-
-Lo stesso identico flusso è disponibile nella web GUI (`./run.sh server` → **Start local proxy**), senza installare nulla. Le credenziali del proxy upstream restano sulla tua macchina.
-
-Una volta avviato, invia richieste a `POST http://localhost:9090/mcp`:
+Once started, send requests to `POST http://localhost:9090/mcp`:
 
 ```json
 {"jsonrpc":"2.0","id":1,"method":"tools/list"}
@@ -258,6 +240,24 @@ Una volta avviato, invia richieste a `POST http://localhost:9090/mcp`:
 ```json
 {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"compare","arguments":{"url":"https://example.com","proxy":"socks5://77.245.76.107:1080"}}}
 ```
+
+**local_proxy** — exposes the proxy you tested as a local forward proxy, so your browser, `curl` and `wget` route through it:
+
+```bash
+./run.sh cli --plugins local_proxy --proxy socks5://77.245.76.107:1080 --proxy-type socks5
+```
+
+You will see the local address and the ready-to-copy commands:
+
+```text
+🚀 Local forward proxy ready — route your traffic through it:
+
+   Browser   → set HTTP/HTTPS proxy to http://127.0.0.1:8081
+   curl      → curl -x http://127.0.0.1:8081 https://example.com
+   wget      → wget -e use_proxy=yes -e http_proxy=http://127.0.0.1:8081 https://example.com
+```
+
+The exact same flow is available in the web GUI (`./run.sh server` → **Start local proxy**), with nothing to install. The upstream proxy credentials stay on your machine.
 
 ### OpenCode / AI Assistant Integration
 
@@ -277,7 +277,7 @@ ProxyDoctor's MCP server is compatible with [OpenCode](https://opencode.ai) and 
 
 Once the MCP server is running, the assistant can use `diagnose`, `compare`, and `list_checks` as native tools — no curl needed.
 
-### Carica più plugin insieme
+### Load multiple plugins together
 
 ```bash
 ./run.sh cli --plugins route_trace,mcp_server
@@ -364,8 +364,10 @@ The CLI and GUI accept proxy URLs in multiple formats:
 | Format | Example | Notes |
 |---|---|---|
 | `scheme://host:port` | `socks5://77.245.76.107:1080` | Auto-detects type from scheme |
+| `scheme://host:port` | `socks4://77.245.76.107:1080` | SOCKS4a domain support included |
+| `scheme://host:port` | `http://proxy.example:3128` | HTTP and HTTPS (CONNECT) forward proxies |
 | `host:port` + type | `77.245.76.107:1080` + `--proxy-type socks5` | Requires explicit type |
-| `host` + type | `77.245.76.107` + `--proxy-type socks5` | Uses default port (1080 for SOCKS, 8080 for HTTP) |
+| `host` + type | `77.245.76.107` + `--proxy-type http` | Uses default port (1080 for SOCKS, 8080 for HTTP) |
 | With auth | `socks5://user:pass@host:port` | Credentials extracted from URL |
 
 ## Contributing
