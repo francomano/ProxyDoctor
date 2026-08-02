@@ -292,23 +292,47 @@ const indexHTML = `<!DOCTYPE html>
   <div id="error"></div>
   <div id="results"></div>
 
-  <div class="section" id="local-proxy">
-    <h2>🚀 Local forward proxy</h2>
-    <p class="sub">Expose the proxy above as a local proxy: browse, curl and download through it.</p>
+  <div class="section" id="expose-proxy">
+    <h2>📡 Expose proxy</h2>
+    <p class="sub">Run the <code>--local_proxy</code> plugin: insert the upstream proxy here and expose it as a local forward proxy.</p>
+
+    <div class="row" style="margin-bottom:12px;">
+      <div>
+        <label for="expose-proxy-value">Upstream proxy</label>
+        <input id="expose-proxy-value" type="text" placeholder="socks5://host:1080 or http://host:3128" />
+      </div>
+      <div>
+        <label for="expose-proxy-type">Proxy type</label>
+        <select id="expose-proxy-type">
+          <option value="auto">auto (from scheme)</option>
+          <option value="http">HTTP</option>
+          <option value="https">HTTPS</option>
+          <option value="socks4">SOCKS4</option>
+          <option value="socks5">SOCKS5</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <label for="expose-port">Local port (bound to 127.0.0.1)</label>
+      <input id="expose-port" type="number" min="1024" max="65535" value="8081" />
+    </div>
 
     <div>
-      <button type="button" id="proxy-start">Start local proxy</button>
-      <button type="button" id="proxy-stop" disabled>Stop local proxy</button>
+      <button type="button" id="proxy-start">Expose</button>
+      <button type="button" id="proxy-stop" disabled>Stop exposure</button>
       <span id="proxy-status"></span>
     </div>
 
     <div id="proxy-instructions" style="margin-top:14px;display:none;">
-      <p style="margin:0 0 6px;">Your local proxy is listening on <strong id="proxy-addr"></strong>. Point anything at it:</p>
+      <p style="margin:0 0 6px;">
+        Exposed! Your local proxy listens on <strong id="proxy-addr"></strong>
+        — upstream <span id="proxy-upstream"></span>. Point anything at it:
+      </p>
       <code class="cmd" id="proxy-curl"></code>
       <code class="cmd" id="proxy-wget"></code>
       <p style="font-size:0.8rem;color:#9aa0a6;margin:8px 0 0;">
         Browser: set your HTTP/HTTPS proxy to <strong id="proxy-addr2"></strong>.
-        Credentials stay on this machine — the upstream proxy is never exposed locally.
+        Credentials stay on this machine — the upstream proxy is never exposed beyond 127.0.0.1.
       </p>
     </div>
   </div>
@@ -346,6 +370,8 @@ const indexHTML = `<!DOCTYPE html>
         proxyInstructions.style.display = 'block';
         document.getElementById('proxy-addr').textContent = st.address;
         document.getElementById('proxy-addr2').textContent = st.address;
+        document.getElementById('proxy-upstream').textContent =
+          st.proxy_type === 'auto' ? st.proxy : (st.proxy_type + '://' + st.proxy);
         document.getElementById('proxy-curl').textContent =
           'curl -x http://' + st.address + ' https://example.com';
         document.getElementById('proxy-wget').textContent =
@@ -357,10 +383,17 @@ const indexHTML = `<!DOCTYPE html>
 
     proxyStartBtn.addEventListener('click', async () => {
       proxyStartBtn.disabled = true;
+      const portVal = parseInt(document.getElementById('expose-port').value, 10);
       const payload = {
-        proxy: document.getElementById('proxy').value.trim(),
-        proxy_type: document.getElementById('proxy_type').value,
+        proxy: document.getElementById('expose-proxy-value').value.trim(),
+        proxy_type: document.getElementById('expose-proxy-type').value,
+        port: isNaN(portVal) || portVal < 1 ? 0 : portVal,
       };
+      if (!payload.proxy) {
+        proxyStatusEl.textContent = 'insert an upstream proxy first';
+        proxyStartBtn.disabled = false;
+        return;
+      }
       try {
         const resp = await fetch('/api/local-proxy/start', {
           method: 'POST',

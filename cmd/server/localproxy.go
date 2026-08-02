@@ -30,6 +30,7 @@ type localProxyStatus struct {
 type localProxyStartRequest struct {
 	Proxy     string `json:"proxy"`
 	ProxyType string `json:"proxy_type"`
+	Port      int    `json:"port"`
 }
 
 func localProxyStatusHandler(w http.ResponseWriter, r *http.Request) {
@@ -73,13 +74,16 @@ func localProxyStartHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	config := map[string]interface{}{
+		"proxy":      body.Proxy,
+		"proxy_type": body.ProxyType,
+	}
+	if body.Port != 0 {
+		config["port"] = body.Port
+	}
+
 	p := localproxy.New()
-	if err := p.Init(&plugin.Context{
-		Config: map[string]interface{}{
-			"proxy":      body.Proxy,
-			"proxy_type": body.ProxyType,
-		},
-	}); err != nil {
+	if err := p.Init(&plugin.Context{Config: config}); err != nil {
 		writeJSONError(w, http.StatusInternalServerError, fmt.Sprintf("failed to start local proxy: %v", err))
 		return
 	}
