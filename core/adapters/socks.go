@@ -252,6 +252,9 @@ func NewSOCKS5Adapter(config check.ProxyConfig) check.NetworkAdapter {
 		Scheme: "socks5",
 		Host:   pAddr,
 	}
+	if config.Username != "" {
+		proxyURL.User = url.UserPassword(config.Username, config.Password)
+	}
 
 	dialer, err := proxy.FromURL(proxyURL, proxy.Direct)
 	if err != nil {

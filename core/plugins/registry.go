@@ -3,6 +3,7 @@ package plugins
 import (
 	"fmt"
 
+	localproxyplugin "github.com/francomano/proxydoctor/core/plugins/localproxy"
 	mcpplugin "github.com/francomano/proxydoctor/core/plugins/mcp"
 	routetraceplugin "github.com/francomano/proxydoctor/core/plugins/routetrace"
 	"github.com/francomano/proxydoctor/core/plugin"
@@ -13,6 +14,7 @@ func Available() map[string]plugin.Plugin {
 	return map[string]plugin.Plugin{
 		"route_trace": routetraceplugin.New(),
 		"mcp_server":  mcpplugin.New(),
+		"local_proxy": localproxyplugin.New(),
 	}
 }
 

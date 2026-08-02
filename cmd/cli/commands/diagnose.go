@@ -53,7 +53,7 @@ It analyzes connectivity through proxies and identifies issues.`,
 		fmt.Println()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		runPlugins()
+		runPlugins(cmd)
 	},
 }
 
@@ -72,8 +72,6 @@ func init() {
 	RootCmd.AddCommand(versionCmd)
 
 	diagnoseCmd.Flags().StringVarP(&url, "url", "u", "", "URL to diagnose (required)")
-	diagnoseCmd.Flags().StringVarP(&proxyStr, "proxy", "p", "", "Proxy URL (e.g., http://localhost:8080, socks5://localhost:1080)")
-	diagnoseCmd.Flags().StringVar(&proxyType, "proxy-type", "auto", "Proxy type: auto, http, https, socks4, socks5")
 	diagnoseCmd.Flags().StringVarP(&exportFmt, "export", "e", "text", "Export format: text, json, html, markdown")
 	diagnoseCmd.Flags().StringVarP(&output, "output", "o", "", "Output file (empty = stdout)")
 	diagnoseCmd.Flags().BoolVar(&compare, "compare", false, "Compare with direct connection")
@@ -84,7 +82,7 @@ func init() {
 }
 
 func runDiagnose(cmd *cobra.Command, args []string) error {
-	fmt.Printf("🔍 ProxyDoctor v0.3.0 - Proxy Diagnostics Tool\n")
+	fmt.Printf("🔍 ProxyDoctor v0.4.0 - Proxy Diagnostics Tool\n")
 	fmt.Printf("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n")
 
 	diagnosisTimeout, err := parseDiagnosisTimeout(timeout)
@@ -104,7 +102,7 @@ func runDiagnose(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	mgr, err := loadPlugins(registry)
+	mgr, err := loadPlugins(registry, cmd.PersistentFlags().Changed)
 	if err != nil {
 		fmt.Printf("❌ Plugin load failed: %v\n", err)
 		return err

@@ -173,7 +173,10 @@ func connectViaHTTPProxy(config check.ProxyConfig, target string, timeout time.D
 		_ = conn.Close()
 		return nil, fmt.Errorf("could not read CONNECT response: %w", err)
 	}
-	defer closeResponseBody(resp)
+	// Do NOT drain the body: for a 2xx CONNECT response Go exposes the tunnel
+	// itself as the (unbounded) body, so draining it would consume tunnel data
+	// or block forever. Closing without draining keeps the connection usable.
+	_ = resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		_ = conn.Close()

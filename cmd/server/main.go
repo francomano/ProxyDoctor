@@ -27,6 +27,9 @@ func main() {
 	mux.HandleFunc("/", indexHandler)
 	mux.HandleFunc("/api/checks", checksHandler)
 	mux.HandleFunc("/api/diagnose", diagnoseHandler)
+	mux.HandleFunc("/api/local-proxy/status", localProxyStatusHandler)
+	mux.HandleFunc("/api/local-proxy/start", localProxyStartHandler)
+	mux.HandleFunc("/api/local-proxy/stop", localProxyStopHandler)
 
 	srv := &http.Server{
 		Addr:         ":8080",
@@ -35,10 +38,12 @@ func main() {
 		WriteTimeout: 60 * time.Second,
 	}
 
-	log.Println("ProxyDoctor server starting on :8080")
+	log.Println("ProxyDoctor v0.4.0 server starting on :8080")
 	log.Println("  GUI:          http://localhost:8080/")
 	log.Println("  API checks:   GET  /api/checks")
 	log.Println("  API diagnose: POST /api/diagnose")
+	log.Println("  API proxy:    GET  /api/local-proxy/status")
+	log.Println("  API proxy:    POST /api/local-proxy/start | /api/local-proxy/stop")
 	if err := srv.ListenAndServe(); err != nil {
 		log.Fatalf("server failed: %v", err)
 	}
@@ -221,6 +226,36 @@ const indexHTML = `<!DOCTYPE html>
   }
   #error { color: #ef4444; margin-top: 12px; white-space: pre-wrap; }
   #summary { color: #9aa0a6; font-size: 0.85rem; margin-top: 14px; }
+
+  .section {
+    margin-top: 32px;
+    background: #1a1d24;
+    border: 1px solid #2a2e37;
+    border-radius: 10px;
+    padding: 20px;
+  }
+  .section h2 { font-size: 1.1rem; margin: 0 0 4px; }
+  .section p.sub { margin: 0 0 14px; }
+  .running-dot {
+    display: inline-block;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: #ef4444;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+  .running-dot.on { background: #22c55e; }
+  code.cmd {
+    display: block;
+    background: #0f1115;
+    border: 1px solid #2a2e37;
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin: 6px 0;
+    font-size: 0.8rem;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
 </style>
 </head>
 <body>
@@ -257,11 +292,112 @@ const indexHTML = `<!DOCTYPE html>
   <div id="error"></div>
   <div id="results"></div>
 
+  <div class="section" id="local-proxy">
+    <h2>🚀 Local forward proxy</h2>
+    <p class="sub">Expose the proxy above as a local proxy: browse, curl and download through it.</p>
+
+    <div>
+      <button type="button" id="proxy-start">Start local proxy</button>
+      <button type="button" id="proxy-stop" disabled>Stop local proxy</button>
+      <span id="proxy-status"></span>
+    </div>
+
+    <div id="proxy-instructions" style="margin-top:14px;display:none;">
+      <p style="margin:0 0 6px;">Your local proxy is listening on <strong id="proxy-addr"></strong>. Point anything at it:</p>
+      <code class="cmd" id="proxy-curl"></code>
+      <code class="cmd" id="proxy-wget"></code>
+      <p style="font-size:0.8rem;color:#9aa0a6;margin:8px 0 0;">
+        Browser: set your HTTP/HTTPS proxy to <strong id="proxy-addr2"></strong>.
+        Credentials stay on this machine — the upstream proxy is never exposed locally.
+      </p>
+    </div>
+  </div>
+
   <script>
     const form = document.getElementById('diagnose-form');
     const resultsEl = document.getElementById('results');
     const errorEl = document.getElementById('error');
     const submitBtn = document.getElementById('submit-btn');
+
+    const proxyStartBtn = document.getElementById('proxy-start');
+    const proxyStopBtn = document.getElementById('proxy-stop');
+    const proxyStatusEl = document.getElementById('proxy-status');
+    const proxyInstructions = document.getElementById('proxy-instructions');
+
+    async function refreshLocalProxyStatus() {
+      try {
+        const resp = await fetch('/api/local-proxy/status');
+        const st = await resp.json();
+        renderLocalProxy(st);
+      } catch (err) {
+        proxyStatusEl.textContent = 'status unavailable';
+      }
+    }
+
+    function renderLocalProxy(st) {
+      const running = !!st.running;
+      proxyStartBtn.disabled = running;
+      proxyStopBtn.disabled = !running;
+      proxyStatusEl.innerHTML =
+        '<span class="running-dot ' + (running ? 'on' : '') + '"></span>' +
+        (running ? 'Running on ' + st.address : 'Stopped');
+
+      if (running && st.address) {
+        proxyInstructions.style.display = 'block';
+        document.getElementById('proxy-addr').textContent = st.address;
+        document.getElementById('proxy-addr2').textContent = st.address;
+        document.getElementById('proxy-curl').textContent =
+          'curl -x http://' + st.address + ' https://example.com';
+        document.getElementById('proxy-wget').textContent =
+          'wget -e use_proxy=yes -e http_proxy=http://' + st.address + ' https://example.com';
+      } else {
+        proxyInstructions.style.display = 'none';
+      }
+    }
+
+    proxyStartBtn.addEventListener('click', async () => {
+      proxyStartBtn.disabled = true;
+      const payload = {
+        proxy: document.getElementById('proxy').value.trim(),
+        proxy_type: document.getElementById('proxy_type').value,
+      };
+      try {
+        const resp = await fetch('/api/local-proxy/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await resp.json();
+        if (!resp.ok) {
+          proxyStatusEl.textContent = data.error || ('HTTP ' + resp.status);
+          return;
+        }
+        renderLocalProxy(data);
+      } catch (err) {
+        proxyStatusEl.textContent = String(err);
+      } finally {
+        proxyStartBtn.disabled = false;
+      }
+    });
+
+    proxyStopBtn.addEventListener('click', async () => {
+      proxyStopBtn.disabled = true;
+      try {
+        const resp = await fetch('/api/local-proxy/stop', { method: 'POST' });
+        const data = await resp.json();
+        if (!resp.ok) {
+          proxyStatusEl.textContent = data.error || ('HTTP ' + resp.status);
+          return;
+        }
+        renderLocalProxy(data);
+      } catch (err) {
+        proxyStatusEl.textContent = String(err);
+      } finally {
+        proxyStopBtn.disabled = false;
+      }
+    });
+
+    refreshLocalProxyStatus();
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();

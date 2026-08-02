@@ -35,11 +35,13 @@ ProxyDoctor is a **lightweight diagnostic tool** that:
 - Compares results between direct connection and proxied connection
 - Identifies which specific layer is failing (DNS? TLS? IP leak?)
 - Gives you actionable insights in seconds
+- **Then lets you *use* that proxy**: expose the tested proxy as a local forward proxy and browse, curl, wget or download through it — no more copy-pasting proxy settings into every app
 
 **Perfect for:**
 - Developers debugging proxy issues
 - DevOps engineers troubleshooting VPN connectivity
 - Security teams validating proxy implementations
+- Privacy users who want to route their whole browser through a tested SOCKS/HTTP proxy
 - Anyone tired of guessing what's broken
 
 ## What It Does
@@ -49,30 +51,50 @@ ProxyDoctor is a CLI-first tool to:
 - Compare results between direct connections and proxy-routed connections
 - Route tracing with country flags in the GUI and country names in CLI output
 - Identify connectivity issues and proxy misconfigurations
+- Expose the proxy you just tested as a local forward proxy, from the CLI or the web GUI
 
 ## Project Status
 
 > This version was reviewed and bug-fixed with OpenCode using GPT 5.5 before delivery.
 
-
-**v0.3.0 (Alpha)**
+**v0.4.0 (Beta)**
+- ✅ **Local forward proxy plugin** (`local_proxy`) — expose the proxy you just tested on `127.0.0.1:8081` and browse/curl/wget/download through it. Credentials never leave your machine
+- ✅ **Local proxy in the web GUI** — one-click start/stop, copy-ready `curl`/`wget` commands and browser proxy address
+- ✅ **Install in one command** — `go install`, Homebrew cask, and cross-compiled release binaries (GoReleaser)
+- ✅ **Hermetic integration tests** for every adapter (HTTP, HTTPS, SOCKS4, SOCKS5, auth, TLS-through-proxy) via `internal/testproxy` fixtures — offline and CI-friendly
+- ✅ Fixed SOCKS5 authentication being silently dropped; fixed CONNECT-over-proxy response handling that stalled port checks
 - ✅ Core engine with check registry and dependency DAG
-- ✅ CLI with diagnose and list-checks commands
-- ✅ HTTP/HTTPS proxy support in `diagnose --proxy`
-- ✅ SOCKS4/SOCKS5 proxy support (full protocol implementation, SOCKS4a domain support, SOCKS5 auth per RFC 1929)
-- ✅ HTTP server wired to the core engine, with a web GUI at `/` and `/api/checks`, `/api/diagnose` JSON endpoints
-- ✅ Web GUI — single-page form at `http://localhost:8080/`, runs a real diagnosis via `POST /api/diagnose` and renders results
+- ✅ CLI with `diagnose` and `list-checks` commands
+- ✅ HTTP/HTTPS/SOCKS4/SOCKS5 proxy support (full protocol implementation, SOCKS4a domain support, SOCKS5 auth per RFC 1929)
+- ✅ HTTP server wired to the core engine, with a web GUI at `/` and `/api/checks`, `/api/diagnose`, `/api/local-proxy/*` JSON endpoints
 - ✅ 6 built-in checks: public_ip, dns_resolve, tls_certificate, port_connectivity, route_trace, ipv6_leak
-- ✅ `--export json` and `--export markdown` (working)
-- ✅ Unit tests (6 passing tests, engine coverage)
 - ✅ Plugin system (CheckPlugin, ExportPlugin, MiddlewarePlugin interfaces)
+- ✅ MCP server plugin (Model Context Protocol, exposes diagnose/compare tools on port `:9090`)
 - 🧭 Focused backlog for optional checks such as DNS leak, WebRTC leak, geolocation and IP reputation
-- ✅ MCP server plugin (Model Context Protocol, exposes diagnose/compare tools on port :9090)
 
 ## Requirements
 
 - **Go** >= 1.25
 - **Git**
+
+## Installation
+
+Install in one command — no cloning required.
+
+```bash
+# Option 1 — go install (installs the binary as `cli`; add an alias if you prefer `proxydoctor`)
+go install github.com/francomano/proxydoctor/cmd/cli@latest
+alias proxydoctor="$(go env GOPATH)/bin/cli"   # optional
+
+# Option 2 — Homebrew (cask auto-published in this repo on each release, binary named `proxydoctor`)
+brew install francomano/proxydoctor/proxydoctor
+
+# Option 3 — download a release binary (named `proxydoctor`)
+# Grab the latest archive from https://github.com/francomano/ProxyDoctor/releases
+```
+
+Both the `proxydoctor` (CLI) and `proxydoctor-server` (web GUI) binaries are
+cross-compiled for Linux, macOS, Windows, and FreeBSD on every release.
 
 ## Quick Start
 
@@ -87,7 +109,7 @@ cd ProxyDoctor
 This script will:
 - Verify Go installation
 - Download and verify dependencies
-- Run all tests (6 passing tests)
+- Run all tests
 - Build CLI and server binaries
 
 ### Try the Web GUI
@@ -102,11 +124,13 @@ open http://localhost:8080
 
 Fill in the URL (and optionally a proxy + proxy type), hit "Run diagnosis" — it runs the same `core/engine.DiagnosisOrchestrator` the CLI uses and renders the results as cards.
 
+Once the proxy works, click **Start local proxy** and point your browser, `curl` or `wget` at it. The GUI shows the ready-to-copy commands and the proxy address.
+
 <p align="center">
   <img src="images/gui.png" alt="ProxyDoctor Web GUI" width="750">
 </p>
 
-Two JSON endpoints back the GUI, and can be called directly:
+Three JSON endpoints back the GUI, and can be called directly:
 
 ```bash
 # List available checks
@@ -116,6 +140,12 @@ curl http://localhost:8080/api/checks
 curl -X POST http://localhost:8080/api/diagnose \
   -H "Content-Type: application/json" \
   -d '{"url":"https://example.com","proxy":"socks5://77.245.76.107:1080","proxy_type":"socks5"}'
+
+# Local forward proxy lifecycle
+curl http://localhost:8080/api/local-proxy/status
+curl -X POST http://localhost:8080/api/local-proxy/start \
+  -H "Content-Type: application/json" -d '{"proxy":"socks5://77.245.76.107:1080","proxy_type":"socks5"}'
+curl -X POST http://localhost:8080/api/local-proxy/stop
 ```
 
 ### Use the CLI
@@ -181,6 +211,7 @@ Available plugins are loaded via the `--plugins` flag on `./run.sh cli`.
 |---|---|---|---|
 | Route Trace | `route_trace` | check | Traces network hops and annotates public hops with country information |
 | MCP Server | `mcp_server` | standalone | Exposes diagnose/compare/list_checks tools via the Model Context Protocol on `:9090` |
+| Local Proxy | `local_proxy` | standalone | Exposes the tested proxy as a local forward proxy on `127.0.0.1:8081` for browsing and downloads |
 
 ### Using plugins
 
@@ -195,6 +226,24 @@ Available plugins are loaded via the `--plugins` flag on `./run.sh cli`.
 ```bash
 ./run.sh cli --plugins mcp_server
 ```
+
+**local_proxy** — espone il proxy testato come proxy locale, così browser, curl e wget navigano attraverso di esso:
+
+```bash
+./run.sh cli --plugins local_proxy --proxy socks5://77.245.76.107:1080 --proxy-type socks5
+```
+
+Vedrai l'indirizzo locale e i comandi pronti da copiare:
+
+```text
+🚀 Local forward proxy ready — route your traffic through it:
+
+   Browser   → set HTTP/HTTPS proxy to http://127.0.0.1:8081
+   curl      → curl -x http://127.0.0.1:8081 https://example.com
+   wget      → wget -e use_proxy=yes -e http_proxy=http://127.0.0.1:8081 https://example.com
+```
+
+Lo stesso identico flusso è disponibile nella web GUI (`./run.sh server` → **Start local proxy**), senza installare nulla. Le credenziali del proxy upstream restano sulla tua macchina.
 
 Una volta avviato, invia richieste a `POST http://localhost:9090/mcp`:
 
@@ -271,17 +320,19 @@ Plugin interfaces: `CheckPlugin`, `ExportPlugin`, `MiddlewarePlugin`.
 ProxyDoctor/
 ├── setup.sh              ← One-time setup (install deps, test, build)
 ├── run.sh                ← Convenience launcher (cli, server, test)
+├── .goreleaser.yaml      ← Cross-compiled release binaries + Homebrew cask
 ├── cmd/
-│   ├── cli/              ← CLI application (diagnose, list-checks)
-│   └── server/           ← HTTP API server (minimal, stdlib only) + web GUI
+│   ├── cli/              ← CLI application (diagnose, list-checks, version)
+│   └── server/           ← HTTP API server + web GUI (diagnose + local proxy)
 ├── core/
 │   ├── engine/           ← Orchestration engine (tests included)
 │   ├── check/            ← Result types and interfaces (tests included)
 │   ├── checks/           ← Built-in diagnostic checks (public_ip, dns_resolve, tls_cert, port_scan, ipv6_leak)
-│   ├── adapters/         ← Proxy implementations (Direct, HTTP, HTTPS, SOCKS4, SOCKS5)
+│   ├── adapters/         ← Proxy implementations (Direct, HTTP, HTTPS, SOCKS4, SOCKS5) + dial helpers
 │   ├── plugin/           ← Plugin system interfaces and lifecycle manager
-│   ├── plugins/          ← Plugin implementations (route_trace, mcp_server)
+│   ├── plugins/          ← Plugin implementations (route_trace, mcp_server, local_proxy)
 │   └── utils/            ← Shared helpers (proxy URL parsing)
+├── internal/testproxy/   ← Hermetic proxy fixtures for integration tests
 ├── go.mod, go.sum        ← Go modules
 ├── README.md
 ├── ARCHITECTURE.md

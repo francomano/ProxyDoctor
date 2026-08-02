@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.4.0 - 2026-08-02
+
+### Added
+- **Local forward proxy plugin** (`core/plugins/localproxy/plugin.go`): exposes the proxy you just tested as a local forward proxy on `127.0.0.1:8081`. Plain HTTP requests are forwarded through the configured upstream (direct, HTTP/HTTPS CONNECT, SOCKS4, SOCKS5) and CONNECT (HTTPS) is tunneled. On startup it prints ready-to-copy `curl`/`wget`/browser instructions. Loaded with `proxyctl --plugins local_proxy` (standalone, blocks until SIGINT). Registered in `core/plugins/registry.go`.
+- **Local proxy in the web GUI** (`cmd/server/main.go`, `cmd/server/localproxy.go`): one-click start/stop of the local forward proxy from the browser, with live status and copy-ready commands. New API endpoints `GET /api/local-proxy/status`, `POST /api/local-proxy/start`, `POST /api/local-proxy/stop`.
+- **Shared dial helpers** (`core/adapters/dial.go`): `DialContextFunc`, `NewProxyDialContext` (direct/SOCKS4/SOCKS5/CONNECT via HTTP/HTTPS proxy), and `ForwardTransport` used by the local proxy plugin.
+- **Hermetic proxy fixtures** (`internal/testproxy/fixtures.go`): local HTTP/HTTPS origins, HTTP/HTTPS forward proxies (with basic auth), SOCKS4/4a and SOCKS5 (with RFC 1929 auth), plus self-signed TLS certificates. All bind to `127.0.0.1` on ephemeral ports so `go test ./...` works offline and in CI.
+- **Adapter integration tests** (`core/adapters/adapters_integration_test.go`): 14 tests covering direct, HTTP proxy (incl. auth + refused target), HTTPS proxy, SOCKS4, SOCKS5 (incl. auth), and TLS handshakes through HTTP/SOCKS4/SOCKS5 proxies. Closes #35.
+- **Local proxy plugin tests** (`core/plugins/localproxy/plugin_test.go`): 6 tests covering direct mode, HTTP/SOCKS5 upstream with auth, HTTPS CONNECT (direct and through an HTTP upstream), and shutdown.
+- **Installation methods** (closes #21): removed the `replace` directive from `go.mod` so `go install github.com/francomano/proxydoctor/cmd/cli@latest` works; added `.goreleaser.yaml` (cross-compiled binaries for linux/darwin/windows/freebsd on amd64/arm64) and a GitHub Actions release workflow that publishes binaries and the Homebrew cask on every `v*` tag. Homebrew: `brew install francomano/proxydoctor/proxydoctor`.
+
+### Fixed
+- **SOCKS5 authentication silently dropped** (`core/adapters/socks.go`): `NewSOCKS5Adapter` built the proxy URL without credentials, so the `proxy.FromURL` path never fell back to the authenticated manual dialer. Credentials are now attached to the proxy URL.
+- **CONNECT-over-proxy response handling** (`core/adapters/common.go`, `core/adapters/dial.go`): `http.ReadResponse` on a 2xx CONNECT returns the tunnel as an unbounded body; draining it (as `closeResponseBody` did) consumed tunnel bytes or blocked port checks. The body is now closed without draining.
+
+### Changed
+- `--proxy`/`--proxy-type` moved from `diagnose` local flags to persistent flags on the root command so standalone plugins (`--plugins local_proxy`) can use them. Added `--port` and `--host` flags for the local proxy.
+- `go.mod`: removed the `replace github.com/francomano/proxydoctor => .` directive (required for `go install`).
+- Version bumped to v0.4.0 (Beta).
+
 ## v0.3.0 - 2026-07-29
 
 ### Added

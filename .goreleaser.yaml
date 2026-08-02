@@ -1,0 +1,96 @@
+version: 2
+
+project_name: proxydoctor
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: cli
+    main: ./cmd/cli
+    binary: proxydoctor
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows, freebsd]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w
+
+  - id: server
+    main: ./cmd/server
+    binary: proxydoctor-server
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w
+
+archives:
+  - id: cli
+    ids: [cli]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    files:
+      - README.md
+      - LICENSE
+
+  - id: server
+    ids: [server]
+    name_template: "{{ .ProjectName }}-server_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    files:
+      - README.md
+      - LICENSE
+
+universal_binaries:
+  - id: cli
+    ids: [cli]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_darwin_all"
+    replace: true
+
+homebrew_casks:
+  - name: proxydoctor
+    ids: [cli]
+    homepage: "https://github.com/francomano/ProxyDoctor"
+    description: "Comprehensive proxy diagnostics tool: test, compare and use HTTP/HTTPS/SOCKS4/SOCKS5 proxies"
+    binaries:
+      - proxydoctor
+    url:
+      template: "https://github.com/francomano/ProxyDoctor/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+      verified: "github.com/francomano/ProxyDoctor/"
+    repository:
+      owner: francomano
+      name: ProxyDoctor
+      token: "{{ .Env.GITHUB_TOKEN }}"
+    commit_author:
+      name: goreleaserbot
+      email: bot@goreleaser.com
+    caveats: |
+      The binary is not signed or notarized. If macOS blocks it, run:
+        xattr -d com.apple.quarantine "$(brew --prefix)/bin/proxydoctor"
+
+checksum:
+  name_template: checksums.txt
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"

@@ -13,13 +13,15 @@ cmd/
   cli/                 Cobra-based command line entry point
   server/              Web UI and JSON API over the same diagnosis engine
 core/
-  adapters/            Direct, HTTP(S), SOCKS4 and SOCKS5 network adapters
+  adapters/            Direct, HTTP(S), SOCKS4 and SOCKS5 network adapters + dial helpers
   check/               Shared check, result, proxy, HTTP and TLS types
   checks/              Built-in diagnostic checks
   engine/              Registry, dependency ordering and orchestration
   plugin/              In-process extension interfaces and lifecycle manager
-  plugins/             Plugin implementations (e.g. route_trace)
+  plugins/             Plugin implementations (route_trace, mcp_server, local_proxy)
   utils/               Proxy configuration parsing helpers
+internal/
+  testproxy/           Hermetic local proxy/origin fixtures used by integration tests
 ```
 
 ## Runtime flow
@@ -46,6 +48,17 @@ core/
 ## Standalone plugins
 
 - `mcp_server` (plugin ID: `mcp_server`): exposes `diagnose`, `compare`, and `list_checks` as MCP (Model Context Protocol) tools via HTTP JSON-RPC 2.0 on `:9090`. Supports both direct POST and SSE (Server-Sent Events) transport. Compatible with OpenCode and other MCP clients. Loaded with `--plugins mcp_server` (no subcommand, blocks until SIGINT).
+- `local_proxy` (plugin ID: `local_proxy`): exposes the proxy from `--proxy`/`--proxy-type` as a local forward proxy on `127.0.0.1:8081` (configurable with `--port`/`--host`). Plain HTTP requests are forwarded through the upstream via `adapters.ForwardTransport`; CONNECT requests (HTTPS) are tunneled through `adapters.NewProxyDialContext`. Prints ready-to-copy `curl`/`wget`/browser instructions on startup. Loaded with `--plugins local_proxy`. The same plugin backs the "Start local proxy" control in the web GUI (`cmd/server/localproxy.go`).
+
+## Dial helpers and the local proxy
+
+`core/adapters/dial.go` provides the building blocks that let any plugin route arbitrary traffic through a proxy:
+
+- `DialContextFunc(ctx, network, addr) (net.Conn, error)` — the common dial signature.
+- `NewProxyDialContext(config)` — returns a dial function for direct, SOCKS4, SOCKS5 (RFC 1929 auth), or HTTP/HTTPS proxies (via CONNECT).
+- `ForwardTransport(config)` — an `http.Transport` that replays outgoing HTTP(S) requests through the proxy.
+
+The local proxy handler (`core/plugins/localproxy/plugin.go`) uses `ForwardTransport` for absolute-form HTTP and `NewProxyDialContext` for CONNECT tunneling, so a browser or `curl -x` pointing at the local proxy can browse through any supported upstream. Test coverage uses the `internal/testproxy` fixtures.
 
 ## Network adapters
 
@@ -55,7 +68,9 @@ Every adapter implements `check.NetworkAdapter`:
 - `HTTPProxyAdapter`: HTTP proxy support, including CONNECT for tunneled checks.
 - `HTTPSProxyAdapter`: HTTPS proxy support, including CONNECT for tunneled checks.
 - `SOCKS4Adapter`: SOCKS4/SOCKS4a-style proxy connections.
-- `SOCKS5Adapter`: SOCKS5 proxy connections via `golang.org/x/net/proxy`.
+- `SOCKS5Adapter`: SOCKS5 proxy connections via `golang.org/x/net/proxy`, with RFC 1929 username/password auth and a manual-dialer fallback.
+
+Adapters are exercised by the integration tests in `core/adapters/adapters_integration_test.go`, which use the hermetic fixtures in `internal/testproxy` (local origins, HTTP/HTTPS proxies with auth, SOCKS4/5 proxies with auth).
 
 ## Result model
 

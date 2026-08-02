@@ -2,8 +2,6 @@ module github.com/francomano/proxydoctor
 
 go 1.25.0
 
-replace github.com/francomano/proxydoctor => .
-
 require (
 	github.com/spf13/cobra v1.10.2
 	golang.org/x/net v0.57.0
