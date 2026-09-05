@@ -1,6 +1,9 @@
 package commands
 
 import (
+	"bytes"
+	"io"
+	"os"
 	"sort"
 	"strings"
 	"testing"
@@ -227,6 +230,91 @@ func TestFormatHTMLIncludesSummaryAndEvidence(t *testing.T) {
 		if !strings.Contains(out, want) {
 			t.Fatalf("html output missing %q:\n%s", want, out)
 		}
+	}
+}
+
+// TestFormatTextOmitsEmojiWhenNoColor guards #42: with --no-color the text
+// report drops every emoji and swaps the per-result status glyph for a plain
+// bracketed marker, so the output is safe for CI logs and pipes. JSON/HTML/
+// Markdown output are unaffected.
+func TestFormatTextOmitsEmojiWhenNoColor(t *testing.T) {
+	orig := noColor
+	t.Cleanup(func() { noColor = orig })
+
+	report := &engine.DiagnosisReport{
+		ChecksExecuted: 2,
+		ChecksFailed:   1,
+		Results: []check.CheckResult{
+			{ID: "public_ip", Status: check.StatusPassed, Severity: check.SeverityInfo, Confidence: 0.9, Explanation: "Public IP resolved via proxy."},
+			{ID: "dns_leak", Status: check.StatusFailed, Severity: check.SeverityCritical, Confidence: 0.8, Explanation: "DNS bypassed the proxy."},
+		},
+	}
+
+	noColor = true
+	out := formatText(report)
+	for _, emoji := range []string{"📊", "✅", "❌", "⚠️"} {
+		if strings.Contains(out, emoji) {
+			t.Errorf("no-color text output still contains emoji %q:\n%s", emoji, out)
+		}
+	}
+	for _, want := range []string{"[PASS]", "[FAIL]", "Diagnosis Results", "public_ip", "dns_leak"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("no-color text output missing %q:\n%s", want, out)
+		}
+	}
+
+	// Markdown is unaffected by --no-color: it still uses emoji status markers.
+	md := formatMarkdown(report)
+	if !strings.Contains(md, "✅") {
+		t.Errorf("markdown output should be unaffected by --no-color but lost its emoji:\n%s", md)
+	}
+}
+
+// TestDiagnoseNoColorStdoutContainsNoEmoji guards #42 end to end: executing the
+// real command with --no-color must produce zero emoji across the entire stdout
+// (banner, header, and error paths included), not just in the formatted report.
+// It drives the command through an invalid timeout so runDiagnose exits before
+// touching the network.
+func TestDiagnoseNoColorStdoutContainsNoEmoji(t *testing.T) {
+	orig := noColor
+	origStdout := os.Stdout
+	origArgs := os.Args
+	t.Cleanup(func() {
+		noColor = orig
+		os.Stdout = origStdout
+		os.Args = origArgs
+	})
+
+	root := RootCmd
+	root.SetArgs([]string{"diagnose", "--url", "https://example.com", "--timeout", "3x", "--no-color"})
+
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe: %v", err)
+	}
+	os.Stdout = w
+
+	outCh := make(chan string)
+	go func() {
+		var buf bytes.Buffer
+		io.Copy(&buf, r)
+		outCh <- buf.String()
+	}()
+
+	err = root.Execute()
+	w.Close()
+	out := <-outCh
+	if err == nil {
+		t.Fatalf("expected invalid-timeout error, got nil")
+	}
+
+	for _, emoji := range []string{"🩺", "🔍", "📋", "🧪", "🔗", "✅", "❌", "⚠️", "📊"} {
+		if strings.Contains(out, emoji) {
+			t.Errorf("--no-color stdout still contains emoji %q:\n%s", emoji, out)
+		}
+	}
+	if !strings.Contains(out, "ProxyDoctor") {
+		t.Errorf("--no-color stdout missing banner/header:\n%s", out)
 	}
 }
 

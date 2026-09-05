@@ -27,6 +27,7 @@ var (
 	compare   bool
 	timeout   string
 	checks    string
+	noColor   bool
 )
 
 const (
@@ -46,7 +47,11 @@ It analyzes connectivity through proxies and identifies issues.`,
 		}
 		fmt.Println()
 		fmt.Println("  ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓")
-		fmt.Println("  ┃  🩺 ProxyDoctor                                      ┃")
+		if noColor {
+			fmt.Println("  ┃  ProxyDoctor                                        ┃")
+		} else {
+			fmt.Println("  ┃  🩺 ProxyDoctor                                      ┃")
+		}
 		fmt.Println("  ┃  Comprehensive proxy diagnostics tool                ┃")
 		fmt.Println("  ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛")
 		fmt.Println("  by Marco Francomano — github.com/francomano/ProxyDoctor")
@@ -77,23 +82,24 @@ func init() {
 	diagnoseCmd.Flags().BoolVar(&compare, "compare", false, "Compare with direct connection")
 	diagnoseCmd.Flags().StringVar(&timeout, "timeout", engine.DefaultDiagnosisTimeout.String(), "Diagnosis timeout (1s to 5m, e.g., 10s, 2m)")
 	diagnoseCmd.Flags().StringVar(&checks, "checks", "", "Comma-separated check IDs or categories to run (empty/all = all checks)")
+	diagnoseCmd.Flags().BoolVar(&noColor, "no-color", false, "Disable emoji in text output (for CI, logs, and pipes)")
 
 	diagnoseCmd.MarkFlagRequired("url")
 }
 
 func runDiagnose(cmd *cobra.Command, args []string) error {
-	fmt.Printf("🔍 ProxyDoctor v0.4.0 - Proxy Diagnostics Tool\n")
+	fmt.Printf("%s ProxyDoctor v0.4.0 - Proxy Diagnostics Tool\n", statusGlyph("🔍", ""))
 	fmt.Printf("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n")
 
 	diagnosisTimeout, err := parseDiagnosisTimeout(timeout)
 	if err != nil {
-		fmt.Printf("❌ Invalid timeout: %v\n", err)
+		fmt.Printf("%s Invalid timeout: %v\n", statusGlyph("❌", "[ERROR]"), err)
 		return err
 	}
 
 	proxyConfig, err := utils.ParseProxyConfig(proxyStr, proxyType)
 	if err != nil {
-		fmt.Printf("❌ Invalid proxy configuration: %v\n", err)
+		fmt.Printf("%s Invalid proxy configuration: %v\n", statusGlyph("❌", "[ERROR]"), err)
 		return err
 	}
 
@@ -104,7 +110,7 @@ func runDiagnose(cmd *cobra.Command, args []string) error {
 
 	mgr, err := loadPlugins(registry, cmd.PersistentFlags().Changed)
 	if err != nil {
-		fmt.Printf("❌ Plugin load failed: %v\n", err)
+		fmt.Printf("%s Plugin load failed: %v\n", statusGlyph("❌", "[ERROR]"), err)
 		return err
 	}
 	if mgr != nil {
@@ -113,7 +119,7 @@ func runDiagnose(cmd *cobra.Command, args []string) error {
 
 	checkIDs, err := parseCheckFilters(checks, registry)
 	if err != nil {
-		fmt.Printf("❌ Invalid checks: %v\n", err)
+		fmt.Printf("%s Invalid checks: %v\n", statusGlyph("❌", "[ERROR]"), err)
 		return err
 	}
 
@@ -127,26 +133,26 @@ func runDiagnose(cmd *cobra.Command, args []string) error {
 		Timeout:     diagnosisTimeout,
 	}
 
-	fmt.Printf("📋 Running diagnosis for: %s\n", url)
+	fmt.Printf("%s Running diagnosis for: %s\n", statusGlyph("📋", ""), url)
 	if len(checkIDs) > 0 {
-		fmt.Printf("🧪 Checks: %s\n", strings.Join(checkIDs, ", "))
+		fmt.Printf("%s Checks: %s\n", statusGlyph("🧪", ""), strings.Join(checkIDs, ", "))
 	}
 	if proxyConfig.Type != check.ProxyTypeDirect {
-		fmt.Printf("🔗 Via proxy: %s://%s:%d\n", proxyConfig.Type, proxyConfig.Host, proxyConfig.Port)
+		fmt.Printf("%s Via proxy: %s://%s:%d\n", statusGlyph("🔗", ""), proxyConfig.Type, proxyConfig.Host, proxyConfig.Port)
 	}
 	fmt.Printf("\n")
 
 	if compare {
 		comparisonReport, err := orchestrator.ExecuteComparison(diagRequest)
 		if err != nil {
-			fmt.Printf("❌ Comparison failed: %v\n", err)
+			fmt.Printf("%s Comparison failed: %v\n", statusGlyph("❌", "[ERROR]"), err)
 			return err
 		}
 
 		if err := formatComparisonResults(comparisonReport, exportFmt, output); err != nil {
-			fmt.Printf("❌ Failed to save output: %v\n", err)
+			fmt.Printf("%s Failed to save output: %v\n", statusGlyph("❌", "[ERROR]"), err)
 		} else if output != "" {
-			fmt.Printf("✅ Results saved to %s\n", output)
+			fmt.Printf("%s Results saved to %s\n", statusGlyph("✅", "[OK]"), output)
 		}
 
 		return nil
@@ -154,17 +160,27 @@ func runDiagnose(cmd *cobra.Command, args []string) error {
 
 	report, err := orchestrator.Execute(diagRequest)
 	if err != nil {
-		fmt.Printf("❌ Diagnosis failed: %v\n", err)
+		fmt.Printf("%s Diagnosis failed: %v\n", statusGlyph("❌", "[ERROR]"), err)
 		return err
 	}
 
 	if err := formatResults(report, exportFmt, output); err != nil {
-		fmt.Printf("❌ Failed to save output: %v\n", err)
+		fmt.Printf("%s Failed to save output: %v\n", statusGlyph("❌", "[ERROR]"), err)
 	} else if output != "" {
-		fmt.Printf("✅ Results saved to %s\n", output)
+		fmt.Printf("%s Results saved to %s\n", statusGlyph("✅", "[OK]"), output)
 	}
 
 	return nil
+}
+
+// statusGlyph returns the ANSI/emoji glyph for interactive output, or the plain
+// bracketed marker when --no-color is set, so the entire CLI stays clean for CI
+// logs and pipes (#42).
+func statusGlyph(emoji, plain string) string {
+	if noColor {
+		return plain
+	}
+	return emoji
 }
 
 func parseDiagnosisTimeout(value string) (time.Duration, error) {
@@ -296,16 +312,11 @@ func formatResults(report *engine.DiagnosisReport, format string, outPath string
 
 func formatText(report *engine.DiagnosisReport) string {
 	var out string
-	out += "📊 Diagnosis Results\n"
+	out += textHeader("Diagnosis Results")
 	out += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
 
 	for i, result := range report.Results {
-		status := "✅"
-		if result.IsFailed() {
-			status = "❌"
-		} else if result.IsError() {
-			status = "⚠️"
-		}
+		status := statusMarker(result)
 
 		out += fmt.Sprintf("%d. %s %s\n", i+1, status, result.ID)
 		out += fmt.Sprintf("   Status: %s | Severity: %s | Confidence: %.0f%% [%s]\n",
@@ -318,6 +329,41 @@ func formatText(report *engine.DiagnosisReport) string {
 		report.ChecksExecuted, report.ChecksFailed, report.CriticalFindings)
 	out += fmt.Sprintf("Total Time: %s\n", report.ExecutionTime)
 	return out
+}
+
+// statusMarker returns the per-result status label for text output. When
+// --no-color is set, the emoji are replaced with plain bracketed markers so
+// the report stays readable in CI logs, files, and pipes (#42).
+func statusMarker(result check.CheckResult) string {
+	failed, errored := result.IsFailed(), result.IsError()
+	if noColor {
+		switch {
+		case failed:
+			return "[FAIL]"
+		case errored:
+			return "[ERROR]"
+		default:
+			return "[PASS]"
+		}
+	}
+	switch {
+	case failed:
+		return "❌"
+	case errored:
+		return "⚠️"
+	default:
+		return "✅"
+	}
+}
+
+// textHeader returns the report header line, dropping the emoji when
+// --no-color is set (#42). The box-drawing rule below it is left untouched:
+// it is not emoji and stays readable in plain-text logs.
+func textHeader(label string) string {
+	if noColor {
+		return label + "\n"
+	}
+	return "📊 " + label + "\n"
 }
 
 func formatJSON(report *engine.DiagnosisReport) string {
@@ -610,7 +656,7 @@ func formatMarkdown(report *engine.DiagnosisReport) string {
 
 func formatComparisonText(report *engine.ComparisonReport) string {
 	var out string
-	out += "📊 ProxyDoctor Comparison Results\n"
+	out += textHeader("ProxyDoctor Comparison Results")
 	out += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
 	out += "Direct Connection\n"
 	out += formatResultSummary(report.DirectReport)
