@@ -115,6 +115,7 @@ Every check tells you **what it tests** and **what service it uses**.
 | `dns_leak` | Compares DNS through proxy vs direct path | System DNS on both adapter paths |
 | `webrtc_leak` | Detects if STUN/ICE could leak the real IP | STUN probes to Google, Twilio, and Viagenie servers via UDP |
 | `header_leak` | Detects if forwarded headers leak the real client IP or internal network metadata | [httpbin.org/headers](https://httpbin.org/headers), [httpbin.org/ip](https://httpbin.org/ip) |
+| `proxy_fingerprint` | Auto-detects the proxy protocol and validates it against the configured type | Probes the proxy with SOCKS5, SOCKS4 and HTTP CONNECT greetings |
 
 ### Plugin Checks
 
